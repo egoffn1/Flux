@@ -28,55 +28,55 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
+        with:
+          sdk-version: ${{ env.ANDROID_COMPILE_SDK }}
+          build-tools-version: ${{ env.ANDROID_BUILD_TOOLS }}
 
       - name: Decode keystore
+        if: secrets.KEYSTORE_BASE64 != ''
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release.jks
 
       - name: Create local.properties
         run: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-          echo "keystore.file=app/release.jks" >> local.properties
+          echo "sdk.dir=$ANDROID_SDK_ROOT" >> local.properties
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build release AAB
+        if: secrets.KEYSTORE_BASE64 != ''
         env:
           KEYSTORE_FILE: app/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew bundleRelease
+        run: ./gradlew bundleRelease --warning-mode=all
 
-      - name: Build universal APK
-        env:
-          KEYSTORE_FILE: app/release.jks
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
+      - name: Build unsigned APK
+        run: ./gradlew assembleRelease --warning-mode=all
 
       - name: Generate changelog
         id: changelog
         run: |
-          CHANGELOG=$(git log --pretty=format:"%h - %s (%an)" $(git describe --tags --abbrev=0 HEAD)..HEAD)
+          CHANGELOG=$(git log --pretty=format:"%h - %s (%an)" $(git describe --tags --abbrev=0 HEAD 2>/dev/null || echo "HEAD")..HEAD 2>/dev/null || echo "Initial release")
           echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
 
       - name: Upload AAB
-        uses: actions/upload-artifact@v3
+        if: secrets.KEYSTORE_BASE64 != ''
+        uses: actions/upload-artifact@v4
         with:
           name: release-aab
           path: app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release-apk
           path: app/build/outputs/apk/release/app-release-unsigned.apk
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
@@ -86,7 +86,6 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            app/build/outputs/bundle/release/app-release.aab
             app/build/outputs/apk/release/app-release-unsigned.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
