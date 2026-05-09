@@ -24,16 +24,16 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystoreFile = System.getenv("KEYSTORE_FILE")
-            val keystorePassword = System.getenv("KEYSTORE_PASSWORD")
-            val keyAlias = System.getenv("KEY_ALIAS")
-            val keyPassword = System.getenv("KEY_PASSWORD")
+            val keystorePath = System.getenv("KEYSTORE_FILE")
+            val storePwd = System.getenv("KEYSTORE_PASSWORD")
+            val alias = System.getenv("KEY_ALIAS")
+            val pwd = System.getenv("KEY_PASSWORD")
 
-            if (keystoreFile != null && keystorePassword != null && keyAlias != null && keyPassword != null) {
-                storeFile = file(keystoreFile)
-                storePassword = keystorePassword
-                keyAlias = keyAlias
-                keyPassword = keyPassword
+            if (keystorePath != null && storePwd != null && alias != null && pwd != null) {
+                storeFile = file(keystorePath)
+                storePassword = storePwd
+                keyAlias = alias
+                keyPassword = pwd
             }
         }
     }
@@ -79,49 +79,49 @@ android {
 }
 
 dependencies {
-    val composeVersion = "1.5.4"
+    val composeBomVersion = "2024.02.00"
     val roomVersion = "2.6.1"
     val media3Version = "1.2.0"
     val hiltVersion = "2.48.1"
 
-    coreKtx("androidx.core:core-ktx:1.12.0")
-    lifecycle("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
-    lifecycle("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
-    activity("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation("androidx.activity:activity-compose:1.8.2")
 
-    composeBom("androidx.compose:compose-bom:$composeVersion")
-    compose("androidx.compose.ui:ui")
-    compose("androidx.compose.ui:ui-graphics")
-    compose("androidx.compose.ui:ui-tooling-preview")
-    compose("androidx.compose.material3:material3")
-    compose("androidx.compose.material:material-icons-extended")
-    compose("androidx.compose.animation:animation")
+    implementation(platform("androidx.compose:compose-bom:$composeBomVersion"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.animation:animation")
 
-    navigation("androidx.navigation:navigation-compose:2.7.6")
+    implementation("androidx.navigation:navigation-compose:2.7.6")
 
-    media3("androidx.media3:media3-exoplayer:$media3Version")
-    media3("androidx.media3:media3-session:$media3Version")
-    media3("androidx.media3:media3-ui:$media3Version")
+    implementation("androidx.media3:media3-exoplayer:$media3Version")
+    implementation("androidx.media3:media3-session:$media3Version")
+    implementation("androidx.media3:media3-ui:$media3Version")
 
-    room("androidx.room:room-runtime:$roomVersion")
-    room("androidx.room:room-ktx:$roomVersion")
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
-    datastore("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
 
-    hilt("com.google.dagger:hilt-android:$hiltVersion")
+    implementation("com.google.dagger:hilt-android:$hiltVersion")
     ksp("com.google.dagger:hilt-android-compiler:$hiltVersion")
-    compose("androidx.hilt:hilt-navigation-compose:1.1.0")
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
 
-    coil("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-compose:2.5.0")
 
-    palette("androidx.palette:palette-ktx:1.0.0")
+    implementation("androidx.palette:palette-ktx:1.0.0")
 
-    coroutines("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    testing("androidx.test.ext:junit:1.1.5")
-    testing("androidx.test.espresso:espresso-core:3.5.1")
-    testing("androidx.compose.ui:ui-test-junit4")
-    debug("androidx.compose.ui:ui-tooling")
-    debug("androidx.compose.ui:ui-test-manifest")
+    testImplementation("androidx.test.ext:junit:1.1.5")
+    testImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

@@ -48,7 +48,7 @@ class MusicService : MediaSessionService() {
         )
 
         mediaSession = MediaSession.Builder(this, player!!)
-            .setSessionActivityPendingIntent(sessionActivityPendingIntent)
+            .setSessionActivity(sessionActivityPendingIntent)
             .setCallback(MediaSessionCallback())
             .build()
     }

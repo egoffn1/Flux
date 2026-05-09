@@ -1,0 +1,36 @@
+R_DEF: Internal format may change without notice
+local
+color black
+color purple_200
+color purple_500
+color purple_700
+color teal_200
+color teal_700
+color white
+drawable ic_launcher_background
+drawable ic_launcher_foreground
+mipmap ic_launcher
+mipmap ic_launcher_round
+string add_to_favorites
+string add_to_playlist
+string albums
+string app_name
+string artists
+string favorites
+string grant_permission
+string library
+string next
+string no_tracks
+string notification_channel_description
+string notification_channel_name
+string now_playing
+string pause
+string play
+string playlists
+string previous
+string remove_from_favorites
+string repeat
+string search
+string shuffle
+string tracks
+style Theme.Flux

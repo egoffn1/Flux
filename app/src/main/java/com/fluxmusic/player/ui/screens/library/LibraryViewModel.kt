@@ -1,5 +1,6 @@
 package com.fluxmusic.player.ui.screens.library
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fluxmusic.player.domain.model.Album
@@ -47,17 +48,16 @@ class LibraryViewModel @Inject constructor(
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
 
-    val favoriteTrackIds: StateFlow<Set<Long>> = favoritesRepository.getFavoriteTracks()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
-        .let { flow ->
-            MutableStateFlow(emptySet()).also { mutableFlow ->
-                viewModelScope.launch {
-                    flow.collect { tracks ->
-                        mutableFlow.value = tracks.map { it.id }.toSet()
-                    }
-                }
+    private val _favoriteTrackIds = MutableStateFlow<Set<Long>>(emptySet())
+    val favoriteTrackIds: StateFlow<Set<Long>> = _favoriteTrackIds.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            favoritesRepository.getFavoriteTracks().collect { tracks ->
+                _favoriteTrackIds.value = tracks.map { it.id }.toSet()
             }
         }
+    }
 
     init {
         loadMusic()
@@ -98,5 +98,19 @@ class LibraryViewModel @Inject constructor(
     fun skipNext() {
         queueManager.skipToNext()
         mediaSessionConnection.skipToNext()
+    }
+
+    fun addLocalTrack(uri: Uri, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = musicRepository.addLocalTrack(uri)
+            result.fold(
+                onSuccess = {
+                    onResult(true, null)
+                },
+                onFailure = { error ->
+                    onResult(false, error.message)
+                }
+            )
+        }
     }
 }

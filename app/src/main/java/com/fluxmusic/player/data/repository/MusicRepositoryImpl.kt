@@ -1,7 +1,9 @@
 package com.fluxmusic.player.data.repository
 
+import android.net.Uri
 import com.fluxmusic.player.data.local.dao.TrackDao
 import com.fluxmusic.player.data.local.mappers.toDomain
+import com.fluxmusic.player.data.scanner.LocalTrackScanner
 import com.fluxmusic.player.data.scanner.MediaScanner
 import com.fluxmusic.player.domain.model.Album
 import com.fluxmusic.player.domain.model.Artist
@@ -15,7 +17,8 @@ import javax.inject.Singleton
 @Singleton
 class MusicRepositoryImpl @Inject constructor(
     private val trackDao: TrackDao,
-    private val mediaScanner: MediaScanner
+    private val mediaScanner: MediaScanner,
+    private val localTrackScanner: LocalTrackScanner
 ) : MusicRepository {
 
     override fun getAllTracks(): Flow<List<Track>> =
@@ -75,5 +78,9 @@ class MusicRepositoryImpl @Inject constructor(
 
     override suspend fun scanMediaStore() {
         mediaScanner.scan()
+    }
+
+    override suspend fun addLocalTrack(uri: Uri): Result<Track> {
+        return localTrackScanner.addTrackFromUri(uri).map { it.toDomain() }
     }
 }

@@ -42,17 +42,16 @@ class SearchViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val favoriteTrackIds: StateFlow<Set<Long>> = favoritesRepository.getFavoriteTracks()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-        .let { flow ->
-            MutableStateFlow(emptySet()).also { mutableFlow ->
-                viewModelScope.launch {
-                    flow.collect { tracks ->
-                        mutableFlow.value = tracks.map { it.id }.toSet()
-                    }
-                }
+    private val _favoriteTrackIds = MutableStateFlow<Set<Long>>(emptySet())
+    val favoriteTrackIds: StateFlow<Set<Long>> = _favoriteTrackIds.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            favoritesRepository.getFavoriteTracks().collect { tracks ->
+                _favoriteTrackIds.value = tracks.map { it.id }.toSet()
             }
         }
+    }
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query

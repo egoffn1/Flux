@@ -14,4 +14,5 @@ interface MusicRepository {
     fun searchTracks(query: String): Flow<List<Track>>
     suspend fun getTrackById(id: Long): Track?
     suspend fun scanMediaStore()
+    suspend fun addLocalTrack(uri: android.net.Uri): Result<Track>
 }
