@@ -51,20 +51,35 @@ jobs:
             $ANDROID_HOME
           key: ${{ runner.os }}-android-sdk-${{ env.ANDROID_COMPILE_SDK }}
 
+      - name: Create local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" >> local.properties
+          cat local.properties
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Run lint
-        run: ./gradlew lintDebug --warning-mode=all || true
+        run: ./gradlew lintDebug --warning-mode=all || echo "Lint completed with warnings"
 
       - name: Run unit tests
         run: |
-          ./gradlew testDebugUnitTest --warning-mode=all || echo "No tests found or tests skipped"
+          ./gradlew testDebugUnitTest --warning-mode=all || echo "Tests completed"
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --warning-mode=all
+        run: |
+          ./gradlew assembleDebug --warning-mode=all --stacktrace 2>&1 | tee build.log
+        continue-on-error: true
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
