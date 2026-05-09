@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  JAVA_VERSION: '17'
+  ANDROID_SDK_ROOT: /opt/android-sdk
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,10 +25,12 @@ jobs:
       - uses: android-actions/setup-android@v2
 
       - name: Create local.properties
-        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+        run: echo "sdk.dir=/opt/android-sdk" > local.properties
 
       - name: Build
-        run: chmod +x gradlew && ./gradlew assembleDebug
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
