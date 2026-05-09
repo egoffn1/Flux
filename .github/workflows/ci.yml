@@ -15,7 +15,6 @@ jobs:
   build:
     name: Build and Test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -26,38 +25,20 @@ jobs:
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
-          cache: 'gradle'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
-        with:
-          sdk-version: ${{ env.ANDROID_COMPILE_SDK }}
-          build-tools-version: ${{ env.ANDROID_BUILD_TOOLS }}
-
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
 
       - name: Create local.properties
-        run: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" >> local.properties
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" >> local.properties
 
       - name: Build debug APK
         run: |
-          ./gradlew assembleDebug --info 2>&1 | tail -50
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: flux-debug
           path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 7
