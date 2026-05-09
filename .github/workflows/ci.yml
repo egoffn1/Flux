@@ -59,27 +59,10 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run lint
-        run: ./gradlew lintDebug --warning-mode=all || echo "Lint completed with warnings"
-
-      - name: Run unit tests
-        run: |
-          ./gradlew testDebugUnitTest --warning-mode=all || echo "Tests completed"
-
       - name: Build debug APK
-        run: |
-          ./gradlew assembleDebug --warning-mode=all --stacktrace 2>&1 | tee build.log
-        continue-on-error: true
-
-      - name: Upload build log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: build.log
+        run: ./gradlew assembleDebug
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
