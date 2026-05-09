@@ -20,6 +20,9 @@ class FavoritesRepositoryImpl @Inject constructor(
             entities.map { it.toDomain() }
         }
 
+    override fun getFavoriteIds(): Flow<Set<Long>> =
+        favoriteDao.getFavoriteIds().map { it.toSet() }
+
     override suspend fun isFavorite(trackId: Long): Boolean =
         favoriteDao.isFavorite(trackId)
 

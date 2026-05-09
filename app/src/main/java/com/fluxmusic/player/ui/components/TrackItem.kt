@@ -1,7 +1,12 @@
 package com.fluxmusic.player.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,29 +27,63 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.fluxmusic.player.domain.model.Track
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TrackItem(
     track: Track,
     isPlaying: Boolean = false,
     isFavorite: Boolean = false,
     onTrackClick: () -> Unit,
-    onFavoriteClick: () -> Unit,
-    onMoreClick: () -> Unit,
+    onFavoriteClick: () -> Unit = {},
+    onMoreClick: () -> Unit = {},
+    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var isPressed by remember { mutableStateOf(false) }
+    
+    // Animation for press state
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+    
+    // Animation for favorite color
+    val favoriteColor by animateColorAsState(
+        targetValue = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "favoriteColor"
+    )
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onTrackClick)
+            .scale(scale)
+            .combinedClickable(
+                onClick = { 
+                    isPressed = true
+                    onTrackClick()
+                },
+                onLongClick = onLongClick,
+                onClickLabel = "Play"
+            )
             .background(
                 if (isPlaying) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                 else MaterialTheme.colorScheme.surface
@@ -52,6 +91,7 @@ fun TrackItem(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Album art with rounded corners
         Box(
             modifier = Modifier
                 .size(48.dp)
@@ -63,7 +103,9 @@ fun TrackItem(
                 AsyncImage(
                     model = track.albumArtUri,
                     contentDescription = null,
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop
                 )
             } else {
@@ -77,6 +119,7 @@ fun TrackItem(
 
         Spacer(modifier = Modifier.width(12.dp))
 
+        // Track info
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.Center
@@ -97,20 +140,26 @@ fun TrackItem(
             )
         }
 
+        // Duration
         Text(
             text = formatDuration(track.duration),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        IconButton(onClick = onFavoriteClick) {
+        // Favorite button with animation
+        IconButton(
+            onClick = onFavoriteClick,
+            modifier = Modifier.scale(if (isFavorite) 1.1f else 1f)
+        ) {
             Icon(
                 imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                 contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                tint = favoriteColor
             )
         }
 
+        // More button
         IconButton(onClick = onMoreClick) {
             Icon(
                 imageVector = Icons.Default.MoreVert,

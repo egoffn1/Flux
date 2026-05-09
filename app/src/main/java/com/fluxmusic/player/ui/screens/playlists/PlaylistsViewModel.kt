@@ -3,6 +3,7 @@ package com.fluxmusic.player.ui.screens.playlists
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fluxmusic.player.domain.model.Playlist
+import com.fluxmusic.player.domain.model.Track
 import com.fluxmusic.player.domain.repository.PlaylistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,5 +30,22 @@ class PlaylistsViewModel @Inject constructor(
         viewModelScope.launch {
             playlistRepository.deletePlaylist(playlistId)
         }
+    }
+
+    fun addTrackToPlaylist(playlistId: Long, trackId: Long) {
+        viewModelScope.launch {
+            playlistRepository.addTrackToPlaylist(playlistId, trackId)
+        }
+    }
+
+    fun removeTrackFromPlaylist(playlistId: Long, trackId: Long) {
+        viewModelScope.launch {
+            playlistRepository.removeTrackFromPlaylist(playlistId, trackId)
+        }
+    }
+
+    fun getPlaylistTracks(playlistId: Long): StateFlow<List<Track>> {
+        return playlistRepository.getPlaylistTracks(playlistId)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     }
 }

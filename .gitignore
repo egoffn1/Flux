@@ -10,3 +10,5 @@
 local.properties
 app/release.jks
 *.jksapp/build/
+app/build/
+app/src/main/res/drawable/

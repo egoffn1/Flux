@@ -14,6 +14,9 @@ interface FavoriteDao {
     """)
     fun getAllFavorites(): Flow<List<TrackEntity>>
 
+    @Query("SELECT trackId FROM favorites")
+    fun getFavoriteIds(): Flow<List<Long>>
+
     @Query("SELECT EXISTS(SELECT 1 FROM favorites WHERE trackId = :trackId)")
     suspend fun isFavorite(trackId: Long): Boolean
 

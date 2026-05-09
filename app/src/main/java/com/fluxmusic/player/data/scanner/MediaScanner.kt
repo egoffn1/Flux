@@ -77,12 +77,14 @@ class MediaScanner @Inject constructor(
                         duration = cursor.getLong(durationColumn),
                         uri = contentUri.toString(),
                         albumArtUri = albumArtUri.toString(),
-                        dateAdded = cursor.getLong(dateAddedColumn)
+                        dateAdded = cursor.getLong(dateAddedColumn),
+                        isLocal = false
                     )
                 )
             }
         }
 
-        trackDao.replaceAll(tracks)
+        trackDao.deleteMediaStoreTracks()
+        trackDao.insertAll(tracks)
     }
 }

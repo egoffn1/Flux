@@ -24,6 +24,15 @@ interface TrackDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(tracks: List<TrackEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(track: TrackEntity)
+
+    @Query("SELECT * FROM tracks WHERE isLocal = 1")
+    fun getLocalTracks(): Flow<List<TrackEntity>>
+
+    @Query("DELETE FROM tracks WHERE isLocal = 0")
+    suspend fun deleteMediaStoreTracks()
+
     @Query("DELETE FROM tracks")
     suspend fun deleteAll()
 

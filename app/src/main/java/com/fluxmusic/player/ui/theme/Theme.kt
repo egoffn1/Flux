@@ -16,37 +16,64 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+object FluxColors {
+    // Google Green (primary)
+    val GoogleGreen = Color(0xFF1DB954)
+    val GoogleGreenLight = Color(0xFF1ED760)
+    val GoogleGreenDark = Color(0xFF14833B)
+    
+    // Google Music accent colors
+    val AccentRed = Color(0xFFEA4335)
+    val AccentBlue = Color(0xFF4285F4)
+    val AccentYellow = Color(0xFFFBBC05)
+    
+    // Dark theme surfaces
+    val DarkSurface = Color(0xFF121212)
+    val DarkSurfaceVariant = Color(0xFF1E1E1E)
+    val DarkBackground = Color(0xFF000000)
+    
+    // Light theme surfaces
+    val LightSurface = Color(0xFFFAFAFA)
+    val LightSurfaceVariant = Color(0xFFF5F5F5)
+    val LightBackground = Color(0xFFFFFFFF)
+}
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
-    background = Color(0xFF1C1B1F),
-    surface = Color(0xFF1C1B1F),
+    primary = FluxColors.GoogleGreen,
     onPrimary = Color.Black,
-    onSecondary = Color.Black,
-    onTertiary = Color.Black,
+    primaryContainer = FluxColors.GoogleGreenDark,
+    onPrimaryContainer = Color.White,
+    secondary = FluxColors.AccentBlue,
+    onSecondary = Color.White,
+    tertiary = FluxColors.AccentRed,
+    onTertiary = Color.White,
+    background = FluxColors.DarkBackground,
     onBackground = Color.White,
-    onSurface = Color.White
+    surface = FluxColors.DarkSurface,
+    onSurface = Color.White,
+    surfaceVariant = FluxColors.DarkSurfaceVariant,
+    onSurfaceVariant = Color(0xFFB3B3B3),
+    outline = Color(0xFF404040),
+    outlineVariant = Color(0xFF2A2A2A)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = FluxColors.GoogleGreen,
     onPrimary = Color.White,
+    primaryContainer = FluxColors.GoogleGreenLight,
+    onPrimaryContainer = Color.Black,
+    secondary = FluxColors.AccentBlue,
     onSecondary = Color.White,
+    tertiary = FluxColors.AccentRed,
     onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F)
+    background = FluxColors.LightBackground,
+    onBackground = Color.Black,
+    surface = FluxColors.LightSurface,
+    onSurface = Color.Black,
+    surfaceVariant = FluxColors.LightSurfaceVariant,
+    onSurfaceVariant = Color(0xFF666666),
+    outline = Color(0xFFE0E0E0),
+    outlineVariant = Color(0xFFEEEEEE)
 )
 
 @Composable
@@ -63,6 +90,7 @@ fun FluxTheme(
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
+    
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -70,6 +98,7 @@ fun FluxTheme(
             window.statusBarColor = Color.Transparent.toArgb()
             window.navigationBarColor = Color.Transparent.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
         }
     }
 

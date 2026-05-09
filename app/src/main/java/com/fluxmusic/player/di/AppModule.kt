@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.Context
 import androidx.room.Room
 import com.fluxmusic.player.data.local.FluxDatabase
+import com.fluxmusic.player.data.local.MIGRATION_1_2
 import com.fluxmusic.player.data.local.dao.FavoriteDao
 import com.fluxmusic.player.data.local.dao.PlaylistDao
 import com.fluxmusic.player.data.local.dao.TrackDao
@@ -32,7 +33,7 @@ object DatabaseModule {
             context,
             FluxDatabase::class.java,
             "flux_database"
-        ).build()
+        ).addMigrations(MIGRATION_1_2).build()
     }
 
     @Provides

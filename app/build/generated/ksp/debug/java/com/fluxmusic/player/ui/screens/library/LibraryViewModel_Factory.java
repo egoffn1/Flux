@@ -2,6 +2,7 @@ package com.fluxmusic.player.ui.screens.library;
 
 import com.fluxmusic.player.domain.repository.FavoritesRepository;
 import com.fluxmusic.player.domain.repository.MusicRepository;
+import com.fluxmusic.player.domain.repository.PlaylistRepository;
 import com.fluxmusic.player.domain.usecases.GetAlbumsUseCase;
 import com.fluxmusic.player.domain.usecases.GetAllTracksUseCase;
 import com.fluxmusic.player.domain.usecases.GetArtistsUseCase;
@@ -38,6 +39,8 @@ public final class LibraryViewModel_Factory implements Factory<LibraryViewModel>
 
   private final Provider<FavoritesRepository> favoritesRepositoryProvider;
 
+  private final Provider<PlaylistRepository> playlistRepositoryProvider;
+
   private final Provider<QueueManager> queueManagerProvider;
 
   private final Provider<MediaSessionConnection> mediaSessionConnectionProvider;
@@ -47,6 +50,7 @@ public final class LibraryViewModel_Factory implements Factory<LibraryViewModel>
       Provider<GetArtistsUseCase> getArtistsUseCaseProvider,
       Provider<MusicRepository> musicRepositoryProvider,
       Provider<FavoritesRepository> favoritesRepositoryProvider,
+      Provider<PlaylistRepository> playlistRepositoryProvider,
       Provider<QueueManager> queueManagerProvider,
       Provider<MediaSessionConnection> mediaSessionConnectionProvider) {
     this.getAllTracksUseCaseProvider = getAllTracksUseCaseProvider;
@@ -54,13 +58,14 @@ public final class LibraryViewModel_Factory implements Factory<LibraryViewModel>
     this.getArtistsUseCaseProvider = getArtistsUseCaseProvider;
     this.musicRepositoryProvider = musicRepositoryProvider;
     this.favoritesRepositoryProvider = favoritesRepositoryProvider;
+    this.playlistRepositoryProvider = playlistRepositoryProvider;
     this.queueManagerProvider = queueManagerProvider;
     this.mediaSessionConnectionProvider = mediaSessionConnectionProvider;
   }
 
   @Override
   public LibraryViewModel get() {
-    return newInstance(getAllTracksUseCaseProvider.get(), getAlbumsUseCaseProvider.get(), getArtistsUseCaseProvider.get(), musicRepositoryProvider.get(), favoritesRepositoryProvider.get(), queueManagerProvider.get(), mediaSessionConnectionProvider.get());
+    return newInstance(getAllTracksUseCaseProvider.get(), getAlbumsUseCaseProvider.get(), getArtistsUseCaseProvider.get(), musicRepositoryProvider.get(), favoritesRepositoryProvider.get(), playlistRepositoryProvider.get(), queueManagerProvider.get(), mediaSessionConnectionProvider.get());
   }
 
   public static LibraryViewModel_Factory create(
@@ -69,15 +74,17 @@ public final class LibraryViewModel_Factory implements Factory<LibraryViewModel>
       Provider<GetArtistsUseCase> getArtistsUseCaseProvider,
       Provider<MusicRepository> musicRepositoryProvider,
       Provider<FavoritesRepository> favoritesRepositoryProvider,
+      Provider<PlaylistRepository> playlistRepositoryProvider,
       Provider<QueueManager> queueManagerProvider,
       Provider<MediaSessionConnection> mediaSessionConnectionProvider) {
-    return new LibraryViewModel_Factory(getAllTracksUseCaseProvider, getAlbumsUseCaseProvider, getArtistsUseCaseProvider, musicRepositoryProvider, favoritesRepositoryProvider, queueManagerProvider, mediaSessionConnectionProvider);
+    return new LibraryViewModel_Factory(getAllTracksUseCaseProvider, getAlbumsUseCaseProvider, getArtistsUseCaseProvider, musicRepositoryProvider, favoritesRepositoryProvider, playlistRepositoryProvider, queueManagerProvider, mediaSessionConnectionProvider);
   }
 
   public static LibraryViewModel newInstance(GetAllTracksUseCase getAllTracksUseCase,
       GetAlbumsUseCase getAlbumsUseCase, GetArtistsUseCase getArtistsUseCase,
       MusicRepository musicRepository, FavoritesRepository favoritesRepository,
-      QueueManager queueManager, MediaSessionConnection mediaSessionConnection) {
-    return new LibraryViewModel(getAllTracksUseCase, getAlbumsUseCase, getArtistsUseCase, musicRepository, favoritesRepository, queueManager, mediaSessionConnection);
+      PlaylistRepository playlistRepository, QueueManager queueManager,
+      MediaSessionConnection mediaSessionConnection) {
+    return new LibraryViewModel(getAllTracksUseCase, getAlbumsUseCase, getArtistsUseCase, musicRepository, favoritesRepository, playlistRepository, queueManager, mediaSessionConnection);
   }
 }

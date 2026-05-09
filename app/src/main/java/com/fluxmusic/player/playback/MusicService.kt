@@ -1,7 +1,11 @@
 package com.fluxmusic.player.playback
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.graphics.Bitmap
+import android.os.Build
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -24,10 +28,17 @@ class MusicService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
     private var player: ExoPlayer? = null
+    private var currentBitmap: Bitmap? = null
+
+    companion object {
+        const val CHANNEL_ID = "flux_music_channel"
+        const val NOTIFICATION_ID = 1
+    }
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
+        createNotificationChannel()
 
         player = ExoPlayer.Builder(this)
             .setAudioAttributes(
@@ -53,11 +64,34 @@ class MusicService : MediaSessionService() {
             .build()
     }
 
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Flux Music",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Управление воспроизведением"
+                setShowBadge(false)
+            }
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
         return mediaSession
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        val player = mediaSession?.player
+        if (player?.playWhenReady != true || player.mediaItemCount == 0) {
+            stopSelf()
+        }
+    }
+
     override fun onDestroy() {
+        currentBitmap?.recycle()
         mediaSession?.run {
             player.release()
             release()
@@ -81,17 +115,30 @@ class MusicService : MediaSessionService() {
         }
     }
 
-    companion object {
-        fun createMediaItem(track: Track): MediaItem {
-            return MediaItem.Builder()
-                .setMediaId(track.id.toString())
-                .setUri(track.uri)
-                .setRequestMetadata(
-                    MediaItem.RequestMetadata.Builder()
-                        .setMediaUri(track.uri)
-                        .build()
-                )
-                .build()
-        }
+    fun createMediaItem(track: Track): MediaItem {
+        return MediaItem.Builder()
+            .setMediaId(track.id.toString())
+            .setUri(track.uri)
+            .setRequestMetadata(
+                MediaItem.RequestMetadata.Builder()
+                    .setMediaUri(track.uri)
+                    .build()
+            )
+            .build()
+    }
+}
+
+object MusicServiceHelper {
+    fun createMediaItem(track: Track): MediaItem {
+        val uriString = track.uri.toString()
+        return MediaItem.Builder()
+            .setMediaId(track.id.toString())
+            .setUri(uriString)
+            .setRequestMetadata(
+                MediaItem.RequestMetadata.Builder()
+                    .setMediaUri(android.net.Uri.parse(uriString))
+                    .build()
+            )
+            .build()
     }
 }

@@ -1,6 +1,10 @@
 package com.fluxmusic.player.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -27,9 +31,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,25 +53,59 @@ fun MiniPlayer(
     onClick: () -> Unit,
     visible: Boolean = true
 ) {
+    // Animation for play/pause button
+    val playPauseScale by animateFloatAsState(
+        targetValue = if (isPlaying) 1f else 1.1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "playPauseScale"
+    )
+
+    // Animation for progress bar color
+    val progressColor by animateColorAsState(
+        targetValue = MaterialTheme.colorScheme.primary,
+        label = "progressColor"
+    )
+
+    val trackTitle = remember(track?.id) { track?.title ?: "" }
+    val trackArtist = remember(track?.id) { track?.artist ?: "" }
+    val albumArtUri = remember(track?.id) { track?.albumArtUri }
+
     AnimatedVisibility(
         visible = visible && track != null,
-        enter = slideInVertically(initialOffsetY = { it }),
-        exit = slideOutVertically(targetOffsetY = { it })
+        enter = slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        ) + androidx.compose.animation.fadeIn(),
+        exit = slideOutVertically(
+            targetOffsetY = { it },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        ) + androidx.compose.animation.fadeOut()
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick),
             tonalElevation = 8.dp,
-            shadowElevation = 8.dp
+            shadowElevation = 8.dp,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
             Column {
+                // Animated progress bar
                 LinearProgressIndicator(
-                    progress = { progress },
+                    progress = { progress.coerceIn(0f, 1f) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(2.dp),
-                    color = MaterialTheme.colorScheme.primary,
+                        .height(3.dp),
+                    color = progressColor,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
 
@@ -74,6 +115,7 @@ fun MiniPlayer(
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Album art with rounded corners
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -81,11 +123,13 @@ fun MiniPlayer(
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (track?.albumArtUri != null) {
+                        if (albumArtUri != null) {
                             AsyncImage(
-                                model = track.albumArtUri,
+                                model = albumArtUri,
                                 contentDescription = null,
-                                modifier = Modifier.size(48.dp),
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
                                 contentScale = ContentScale.Crop
                             )
                         } else {
@@ -99,15 +143,16 @@ fun MiniPlayer(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
+                    // Track info
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = track?.title ?: "",
+                            text = trackTitle,
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = track?.artist ?: "",
+                            text = trackArtist,
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -115,17 +160,24 @@ fun MiniPlayer(
                         )
                     }
 
-                    IconButton(onClick = onPlayPauseClick) {
+                    // Animated play/pause button
+                    IconButton(
+                        onClick = onPlayPauseClick,
+                        modifier = Modifier.scale(playPauseScale)
+                    ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play"
+                            contentDescription = if (isPlaying) "Pause" else "Play",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
 
+                    // Next button
                     IconButton(onClick = onNextClick) {
                         Icon(
                             imageVector = Icons.Default.SkipNext,
-                            contentDescription = "Next"
+                            contentDescription = "Next",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

@@ -45,10 +45,11 @@ class LocalTrackScanner @Inject constructor(
                 duration = duration,
                 uri = uri.toString(),
                 albumArtUri = null,
-                dateAdded = System.currentTimeMillis() / 1000
+                dateAdded = System.currentTimeMillis() / 1000,
+                isLocal = true
             )
 
-            trackDao.insertAll(listOf(trackEntity))
+            trackDao.insert(trackEntity)
             Result.success(trackEntity)
         } catch (e: Exception) {
             Result.failure(e)

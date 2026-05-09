@@ -5,9 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fluxmusic.player.domain.model.Album
 import com.fluxmusic.player.domain.model.Artist
+import com.fluxmusic.player.domain.model.Playlist
 import com.fluxmusic.player.domain.model.Track
 import com.fluxmusic.player.domain.repository.FavoritesRepository
 import com.fluxmusic.player.domain.repository.MusicRepository
+import com.fluxmusic.player.domain.repository.PlaylistRepository
 import com.fluxmusic.player.domain.usecases.GetAlbumsUseCase
 import com.fluxmusic.player.domain.usecases.GetArtistsUseCase
 import com.fluxmusic.player.domain.usecases.GetAllTracksUseCase
@@ -29,6 +31,7 @@ class LibraryViewModel @Inject constructor(
     private val getArtistsUseCase: GetArtistsUseCase,
     private val musicRepository: MusicRepository,
     private val favoritesRepository: FavoritesRepository,
+    private val playlistRepository: PlaylistRepository,
     private val queueManager: QueueManager,
     private val mediaSessionConnection: MediaSessionConnection
 ) : ViewModel() {
@@ -42,24 +45,24 @@ class LibraryViewModel @Inject constructor(
     val artists: StateFlow<List<Artist>> = getArtistsUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _isLoading = MutableStateFlow(true)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    val playlists: StateFlow<List<Playlist>> = playlistRepository.getAllPlaylists()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _selectedTab = MutableStateFlow(0)
-    val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _favoriteTrackIds = MutableStateFlow<Set<Long>>(emptySet())
     val favoriteTrackIds: StateFlow<Set<Long>> = _favoriteTrackIds.asStateFlow()
 
-    init {
-        viewModelScope.launch {
-            favoritesRepository.getFavoriteTracks().collect { tracks ->
-                _favoriteTrackIds.value = tracks.map { it.id }.toSet()
-            }
-        }
-    }
+    private var isFirstLoad = true
 
     init {
+        viewModelScope.launch {
+            favoritesRepository.getFavoriteIds().collect { ids ->
+                _favoriteTrackIds.value = ids
+            }
+        }
+        // Load immediately on init - don't wait for first load flag
         loadMusic()
     }
 
@@ -67,13 +70,21 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             musicRepository.scanMediaStore()
+            // Keep data in memory so no reload needed
             _isLoading.value = false
         }
+    }
+
+    fun refresh() {
+        loadMusic()
     }
 
     fun selectTab(index: Int) {
         _selectedTab.value = index
     }
+
+    private val _selectedTab = MutableStateFlow(0)
+    val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
 
     fun playTrack(track: Track, tracks: List<Track>) {
         val index = tracks.indexOfFirst { it.id == track.id }
@@ -111,6 +122,12 @@ class LibraryViewModel @Inject constructor(
                     onResult(false, error.message)
                 }
             )
+        }
+    }
+
+    fun addTrackToPlaylist(playlistId: Long, trackId: Long) {
+        viewModelScope.launch {
+            playlistRepository.addTrackToPlaylist(playlistId, trackId)
         }
     }
 }

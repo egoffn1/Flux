@@ -14,5 +14,6 @@ data class TrackEntity(
     val duration: Long,
     val uri: String,
     val albumArtUri: String?,
-    val dateAdded: Long
+    val dateAdded: Long,
+    val isLocal: Boolean = false
 )

@@ -4,6 +4,21 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -29,8 +45,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.fluxmusic.player.domain.model.RepeatMode
-import com.fluxmusic.player.domain.model.Track
+import com.fluxmusic.player.domain.repository.FavoritesRepository
 import com.fluxmusic.player.playback.MediaSessionConnection
 import com.fluxmusic.player.playback.QueueManager
 import com.fluxmusic.player.ui.components.MiniPlayer
@@ -42,6 +57,8 @@ import com.fluxmusic.player.ui.screens.playlists.PlaylistsScreen
 import com.fluxmusic.player.ui.screens.search.SearchScreen
 import com.fluxmusic.player.ui.theme.FluxTheme
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.media3.common.Player
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -52,6 +69,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var queueManager: QueueManager
+
+    @Inject
+    lateinit var favoritesRepository: FavoritesRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,7 +86,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     MainScreen(
                         mediaSessionConnection = mediaSessionConnection,
-                        queueManager = queueManager
+                        queueManager = queueManager,
+                        favoritesRepository = favoritesRepository
                     )
                 }
             }
@@ -82,15 +103,17 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     mediaSessionConnection: MediaSessionConnection,
-    queueManager: QueueManager
+    queueManager: QueueManager,
+    favoritesRepository: FavoritesRepository
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    val isConnected by mediaSessionConnection.isConnected.collectAsState()
     val isPlaying by mediaSessionConnection.isPlaying.collectAsState()
     val currentPosition by mediaSessionConnection.currentPosition.collectAsState()
     val duration by mediaSessionConnection.duration.collectAsState()
+    val favoriteIds by favoritesRepository.getFavoriteIds().collectAsState(initial = emptySet())
+    val scope = rememberCoroutineScope()
 
     var currentTrack by remember { mutableLongStateOf(-1L) }
     val track = queueManager.currentTrack
@@ -103,7 +126,20 @@ fun MainScreen(
 
     Scaffold(
         bottomBar = {
-            if (showBottomBar && !showNowPlaying) {
+            AnimatedVisibility(
+                visible = showBottomBar && !showNowPlaying,
+                enter = slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) + fadeIn(animationSpec = tween(300)),
+                exit = slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(200)
+                ) + fadeOut(animationSpec = tween(200))
+            ) {
                 Column {
                     MiniPlayer(
                         track = track,
@@ -121,16 +157,16 @@ fun MainScreen(
                     )
                     NavigationBar {
                         Screen.bottomNavItems.forEach { screen ->
+                            val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
                             NavigationBarItem(
                                 icon = {
                                     Icon(
-                                        imageVector = if (currentDestination?.hierarchy?.any { it.route == screen.route } == true)
-                                            screen.selectedIcon!! else screen.unselectedIcon!!,
+                                        imageVector = if (selected) screen.selectedIcon!! else screen.unselectedIcon!!,
                                         contentDescription = screen.title
                                     )
                                 },
                                 label = { Text(screen.title) },
-                                selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                                selected = selected,
                                 onClick = {
                                     navController.navigate(screen.route) {
                                         popUpTo(navController.graph.findStartDestination().id) {
@@ -150,46 +186,113 @@ fun MainScreen(
         Box(modifier = Modifier.padding(padding)) {
             NavHost(
                 navController = navController,
-                startDestination = Screen.Library.route
+                startDestination = Screen.Library.route,
+                enterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(300)
+                    ) + fadeIn(tween(300))
+                },
+                exitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(300)
+                    ) + fadeOut(tween(300))
+                },
+                popEnterTransition = {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(300)
+                    ) + fadeIn(tween(300))
+                },
+                popExitTransition = {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                        animationSpec = tween(300)
+                    ) + fadeOut(tween(300))
+                }
             ) {
-                composable(Screen.Library.route) {
+                composable(
+                    Screen.Library.route,
+                    enterTransition = { fadeIn(tween(200)) },
+                    exitTransition = { fadeOut(tween(200)) }
+                ) {
                     val viewModel: LibraryViewModel = hiltViewModel()
                     LibraryScreen(
                         onTrackClick = { },
                         onNavigateToNowPlaying = { navController.navigate(Screen.NowPlaying.route) }
                     )
                 }
-                composable(Screen.Playlists.route) {
+                
+                composable(
+                    Screen.Playlists.route,
+                    enterTransition = { fadeIn(tween(200)) },
+                    exitTransition = { fadeOut(tween(200)) }
+                ) {
                     PlaylistsScreen()
                 }
-                composable(Screen.Search.route) {
+                
+                composable(
+                    Screen.Search.route,
+                    enterTransition = { fadeIn(tween(200)) },
+                    exitTransition = { fadeOut(tween(200)) }
+                ) {
                     SearchScreen()
                 }
-                composable(Screen.NowPlaying.route) {
+                
+                composable(
+                    Screen.NowPlaying.route,
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = tween(400)
+                        ) + fadeIn(tween(400)) + scaleIn(
+                            initialScale = 0.9f,
+                            animationSpec = tween(400)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = tween(400)
+                        ) + fadeOut(tween(400)) + scaleOut(
+                            targetScale = 0.9f,
+                            animationSpec = tween(400)
+                        )
+                    }
+                ) {
+                    val shuffleEnabled by mediaSessionConnection.shuffleEnabled.collectAsState()
+                    val repeatMode by mediaSessionConnection.repeatMode.collectAsState()
+                    val trackId = track?.id ?: -1L
+
                     NowPlayingScreen(
                         track = track,
                         isPlaying = isPlaying,
                         currentPosition = currentPosition,
                         duration = duration,
-                        shuffleEnabled = queueManager.shuffleEnabled.value,
-                        repeatMode = queueManager.repeatMode.value,
-                        isFavorite = false,
+                        shuffleEnabled = shuffleEnabled,
+                        repeatMode = when (repeatMode) {
+                            Player.REPEAT_MODE_ONE -> com.fluxmusic.player.domain.model.RepeatMode.ONE
+                            Player.REPEAT_MODE_ALL -> com.fluxmusic.player.domain.model.RepeatMode.ALL
+                            else -> com.fluxmusic.player.domain.model.RepeatMode.OFF
+                        },
+                        isFavorite = trackId in favoriteIds,
                         onBackClick = { navController.popBackStack() },
                         onPlayPauseClick = {
                             if (isPlaying) mediaSessionConnection.pause() else mediaSessionConnection.play()
                         },
-                        onNextClick = {
-                            queueManager.skipToNext()
-                            mediaSessionConnection.skipToNext()
-                        },
-                        onPreviousClick = {
-                            queueManager.skipToPrevious()
-                            mediaSessionConnection.skipToPrevious()
-                        },
+                        onNextClick = { mediaSessionConnection.skipToNext() },
+                        onPreviousClick = { mediaSessionConnection.skipToPrevious() },
                         onSeek = { mediaSessionConnection.seekTo(it) },
-                        onShuffleClick = { queueManager.toggleShuffle() },
-                        onRepeatClick = { queueManager.toggleRepeatMode() },
-                        onFavoriteClick = { }
+                        onShuffleClick = { mediaSessionConnection.toggleShuffle() },
+                        onRepeatClick = { mediaSessionConnection.toggleRepeatMode() },
+                        onFavoriteClick = {
+                            if (trackId > 0) {
+                                scope.launch {
+                                    favoritesRepository.toggleFavorite(trackId)
+                                }
+                            }
+                        }
                     )
                 }
             }

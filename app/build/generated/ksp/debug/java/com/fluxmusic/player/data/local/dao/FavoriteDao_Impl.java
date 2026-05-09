@@ -17,6 +17,7 @@ import com.fluxmusic.player.data.local.entity.TrackEntity;
 import java.lang.Boolean;
 import java.lang.Class;
 import java.lang.Exception;
+import java.lang.Long;
 import java.lang.Object;
 import java.lang.Override;
 import java.lang.String;
@@ -138,6 +139,7 @@ public final class FavoriteDao_Impl implements FavoriteDao {
           final int _cursorIndexOfUri = CursorUtil.getColumnIndexOrThrow(_cursor, "uri");
           final int _cursorIndexOfAlbumArtUri = CursorUtil.getColumnIndexOrThrow(_cursor, "albumArtUri");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
+          final int _cursorIndexOfIsLocal = CursorUtil.getColumnIndexOrThrow(_cursor, "isLocal");
           final List<TrackEntity> _result = new ArrayList<TrackEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final TrackEntity _item;
@@ -163,7 +165,40 @@ public final class FavoriteDao_Impl implements FavoriteDao {
             }
             final long _tmpDateAdded;
             _tmpDateAdded = _cursor.getLong(_cursorIndexOfDateAdded);
-            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded);
+            final boolean _tmpIsLocal;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsLocal);
+            _tmpIsLocal = _tmp != 0;
+            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded,_tmpIsLocal);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+        }
+      }
+
+      @Override
+      protected void finalize() {
+        _statement.release();
+      }
+    });
+  }
+
+  @Override
+  public Flow<List<Long>> getFavoriteIds() {
+    final String _sql = "SELECT trackId FROM favorites";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    return CoroutinesRoom.createFlow(__db, false, new String[] {"favorites"}, new Callable<List<Long>>() {
+      @Override
+      @NonNull
+      public List<Long> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final List<Long> _result = new ArrayList<Long>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final Long _item;
+            _item = _cursor.getLong(0);
             _result.add(_item);
           }
           return _result;

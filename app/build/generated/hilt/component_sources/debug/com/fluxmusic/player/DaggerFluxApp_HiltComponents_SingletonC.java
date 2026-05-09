@@ -433,6 +433,7 @@ public final class DaggerFluxApp_HiltComponents_SingletonC {
     private MainActivity injectMainActivity2(MainActivity instance) {
       MainActivity_MembersInjector.injectMediaSessionConnection(instance, singletonCImpl.mediaSessionConnectionProvider.get());
       MainActivity_MembersInjector.injectQueueManager(instance, singletonCImpl.queueManagerProvider.get());
+      MainActivity_MembersInjector.injectFavoritesRepository(instance, singletonCImpl.favoritesRepositoryImplProvider.get());
       return instance;
     }
   }
@@ -511,7 +512,7 @@ public final class DaggerFluxApp_HiltComponents_SingletonC {
       public T get() {
         switch (id) {
           case 0: // com.fluxmusic.player.ui.screens.library.LibraryViewModel 
-          return (T) new LibraryViewModel(viewModelCImpl.getAllTracksUseCase(), viewModelCImpl.getAlbumsUseCase(), viewModelCImpl.getArtistsUseCase(), singletonCImpl.musicRepositoryImplProvider.get(), singletonCImpl.favoritesRepositoryImplProvider.get(), singletonCImpl.queueManagerProvider.get(), singletonCImpl.mediaSessionConnectionProvider.get());
+          return (T) new LibraryViewModel(viewModelCImpl.getAllTracksUseCase(), viewModelCImpl.getAlbumsUseCase(), viewModelCImpl.getArtistsUseCase(), singletonCImpl.musicRepositoryImplProvider.get(), singletonCImpl.favoritesRepositoryImplProvider.get(), singletonCImpl.playlistRepositoryImplProvider.get(), singletonCImpl.queueManagerProvider.get(), singletonCImpl.mediaSessionConnectionProvider.get());
 
           case 1: // com.fluxmusic.player.ui.screens.playlists.PlaylistsViewModel 
           return (T) new PlaylistsViewModel(singletonCImpl.playlistRepositoryImplProvider.get());
@@ -614,6 +615,10 @@ public final class DaggerFluxApp_HiltComponents_SingletonC {
 
     private Provider<FluxDatabase> provideDatabaseProvider;
 
+    private Provider<FavoriteDao> provideFavoriteDaoProvider;
+
+    private Provider<FavoritesRepositoryImpl> favoritesRepositoryImplProvider;
+
     private Provider<TrackDao> provideTrackDaoProvider;
 
     private Provider<ContentResolver> provideContentResolverProvider;
@@ -623,10 +628,6 @@ public final class DaggerFluxApp_HiltComponents_SingletonC {
     private Provider<LocalTrackScanner> localTrackScannerProvider;
 
     private Provider<MusicRepositoryImpl> musicRepositoryImplProvider;
-
-    private Provider<FavoriteDao> provideFavoriteDaoProvider;
-
-    private Provider<FavoritesRepositoryImpl> favoritesRepositoryImplProvider;
 
     private Provider<PlaylistDao> providePlaylistDaoProvider;
 
@@ -643,13 +644,13 @@ public final class DaggerFluxApp_HiltComponents_SingletonC {
       this.mediaSessionConnectionProvider = DoubleCheck.provider(new SwitchingProvider<MediaSessionConnection>(singletonCImpl, 0));
       this.queueManagerProvider = DoubleCheck.provider(new SwitchingProvider<QueueManager>(singletonCImpl, 1));
       this.provideDatabaseProvider = DoubleCheck.provider(new SwitchingProvider<FluxDatabase>(singletonCImpl, 4));
-      this.provideTrackDaoProvider = DoubleCheck.provider(new SwitchingProvider<TrackDao>(singletonCImpl, 3));
-      this.provideContentResolverProvider = DoubleCheck.provider(new SwitchingProvider<ContentResolver>(singletonCImpl, 6));
-      this.mediaScannerProvider = DoubleCheck.provider(new SwitchingProvider<MediaScanner>(singletonCImpl, 5));
-      this.localTrackScannerProvider = DoubleCheck.provider(new SwitchingProvider<LocalTrackScanner>(singletonCImpl, 7));
-      this.musicRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<MusicRepositoryImpl>(singletonCImpl, 2));
-      this.provideFavoriteDaoProvider = DoubleCheck.provider(new SwitchingProvider<FavoriteDao>(singletonCImpl, 9));
-      this.favoritesRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<FavoritesRepositoryImpl>(singletonCImpl, 8));
+      this.provideFavoriteDaoProvider = DoubleCheck.provider(new SwitchingProvider<FavoriteDao>(singletonCImpl, 3));
+      this.favoritesRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<FavoritesRepositoryImpl>(singletonCImpl, 2));
+      this.provideTrackDaoProvider = DoubleCheck.provider(new SwitchingProvider<TrackDao>(singletonCImpl, 6));
+      this.provideContentResolverProvider = DoubleCheck.provider(new SwitchingProvider<ContentResolver>(singletonCImpl, 8));
+      this.mediaScannerProvider = DoubleCheck.provider(new SwitchingProvider<MediaScanner>(singletonCImpl, 7));
+      this.localTrackScannerProvider = DoubleCheck.provider(new SwitchingProvider<LocalTrackScanner>(singletonCImpl, 9));
+      this.musicRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<MusicRepositoryImpl>(singletonCImpl, 5));
       this.providePlaylistDaoProvider = DoubleCheck.provider(new SwitchingProvider<PlaylistDao>(singletonCImpl, 11));
       this.playlistRepositoryImplProvider = DoubleCheck.provider(new SwitchingProvider<PlaylistRepositoryImpl>(singletonCImpl, 10));
     }
@@ -693,29 +694,29 @@ public final class DaggerFluxApp_HiltComponents_SingletonC {
           case 1: // com.fluxmusic.player.playback.QueueManager 
           return (T) new QueueManager();
 
-          case 2: // com.fluxmusic.player.data.repository.MusicRepositoryImpl 
-          return (T) new MusicRepositoryImpl(singletonCImpl.provideTrackDaoProvider.get(), singletonCImpl.mediaScannerProvider.get(), singletonCImpl.localTrackScannerProvider.get());
+          case 2: // com.fluxmusic.player.data.repository.FavoritesRepositoryImpl 
+          return (T) new FavoritesRepositoryImpl(singletonCImpl.provideFavoriteDaoProvider.get());
 
-          case 3: // com.fluxmusic.player.data.local.dao.TrackDao 
-          return (T) DatabaseModule_ProvideTrackDaoFactory.provideTrackDao(singletonCImpl.provideDatabaseProvider.get());
+          case 3: // com.fluxmusic.player.data.local.dao.FavoriteDao 
+          return (T) DatabaseModule_ProvideFavoriteDaoFactory.provideFavoriteDao(singletonCImpl.provideDatabaseProvider.get());
 
           case 4: // com.fluxmusic.player.data.local.FluxDatabase 
           return (T) DatabaseModule_ProvideDatabaseFactory.provideDatabase(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 5: // com.fluxmusic.player.data.scanner.MediaScanner 
+          case 5: // com.fluxmusic.player.data.repository.MusicRepositoryImpl 
+          return (T) new MusicRepositoryImpl(singletonCImpl.provideTrackDaoProvider.get(), singletonCImpl.mediaScannerProvider.get(), singletonCImpl.localTrackScannerProvider.get());
+
+          case 6: // com.fluxmusic.player.data.local.dao.TrackDao 
+          return (T) DatabaseModule_ProvideTrackDaoFactory.provideTrackDao(singletonCImpl.provideDatabaseProvider.get());
+
+          case 7: // com.fluxmusic.player.data.scanner.MediaScanner 
           return (T) new MediaScanner(singletonCImpl.provideContentResolverProvider.get(), singletonCImpl.provideTrackDaoProvider.get());
 
-          case 6: // android.content.ContentResolver 
+          case 8: // android.content.ContentResolver 
           return (T) AppModule_ProvideContentResolverFactory.provideContentResolver(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
-          case 7: // com.fluxmusic.player.data.scanner.LocalTrackScanner 
+          case 9: // com.fluxmusic.player.data.scanner.LocalTrackScanner 
           return (T) new LocalTrackScanner(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.provideTrackDaoProvider.get());
-
-          case 8: // com.fluxmusic.player.data.repository.FavoritesRepositoryImpl 
-          return (T) new FavoritesRepositoryImpl(singletonCImpl.provideFavoriteDaoProvider.get());
-
-          case 9: // com.fluxmusic.player.data.local.dao.FavoriteDao 
-          return (T) DatabaseModule_ProvideFavoriteDaoFactory.provideFavoriteDao(singletonCImpl.provideDatabaseProvider.get());
 
           case 10: // com.fluxmusic.player.data.repository.PlaylistRepositoryImpl 
           return (T) new PlaylistRepositoryImpl(singletonCImpl.providePlaylistDaoProvider.get());

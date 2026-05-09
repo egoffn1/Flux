@@ -36,6 +36,8 @@ public final class TrackDao_Impl implements TrackDao {
 
   private final EntityInsertionAdapter<TrackEntity> __insertionAdapterOfTrackEntity;
 
+  private final SharedSQLiteStatement __preparedStmtOfDeleteMediaStoreTracks;
+
   private final SharedSQLiteStatement __preparedStmtOfDeleteAll;
 
   public TrackDao_Impl(@NonNull final RoomDatabase __db) {
@@ -44,7 +46,7 @@ public final class TrackDao_Impl implements TrackDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `tracks` (`id`,`title`,`artist`,`album`,`albumId`,`duration`,`uri`,`albumArtUri`,`dateAdded`) VALUES (?,?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `tracks` (`id`,`title`,`artist`,`album`,`albumId`,`duration`,`uri`,`albumArtUri`,`dateAdded`,`isLocal`) VALUES (?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -63,6 +65,16 @@ public final class TrackDao_Impl implements TrackDao {
           statement.bindString(8, entity.getAlbumArtUri());
         }
         statement.bindLong(9, entity.getDateAdded());
+        final int _tmp = entity.isLocal() ? 1 : 0;
+        statement.bindLong(10, _tmp);
+      }
+    };
+    this.__preparedStmtOfDeleteMediaStoreTracks = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "DELETE FROM tracks WHERE isLocal = 0";
+        return _query;
       }
     };
     this.__preparedStmtOfDeleteAll = new SharedSQLiteStatement(__db) {
@@ -95,9 +107,50 @@ public final class TrackDao_Impl implements TrackDao {
   }
 
   @Override
+  public Object insert(final TrackEntity track, final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        __db.beginTransaction();
+        try {
+          __insertionAdapterOfTrackEntity.insert(track);
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
   public Object replaceAll(final List<TrackEntity> tracks,
       final Continuation<? super Unit> $completion) {
     return RoomDatabaseKt.withTransaction(__db, (__cont) -> TrackDao.DefaultImpls.replaceAll(TrackDao_Impl.this, tracks, __cont), $completion);
+  }
+
+  @Override
+  public Object deleteMediaStoreTracks(final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfDeleteMediaStoreTracks.acquire();
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfDeleteMediaStoreTracks.release(_stmt);
+        }
+      }
+    }, $completion);
   }
 
   @Override
@@ -142,6 +195,7 @@ public final class TrackDao_Impl implements TrackDao {
           final int _cursorIndexOfUri = CursorUtil.getColumnIndexOrThrow(_cursor, "uri");
           final int _cursorIndexOfAlbumArtUri = CursorUtil.getColumnIndexOrThrow(_cursor, "albumArtUri");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
+          final int _cursorIndexOfIsLocal = CursorUtil.getColumnIndexOrThrow(_cursor, "isLocal");
           final List<TrackEntity> _result = new ArrayList<TrackEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final TrackEntity _item;
@@ -167,7 +221,11 @@ public final class TrackDao_Impl implements TrackDao {
             }
             final long _tmpDateAdded;
             _tmpDateAdded = _cursor.getLong(_cursorIndexOfDateAdded);
-            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded);
+            final boolean _tmpIsLocal;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsLocal);
+            _tmpIsLocal = _tmp != 0;
+            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded,_tmpIsLocal);
             _result.add(_item);
           }
           return _result;
@@ -205,6 +263,7 @@ public final class TrackDao_Impl implements TrackDao {
           final int _cursorIndexOfUri = CursorUtil.getColumnIndexOrThrow(_cursor, "uri");
           final int _cursorIndexOfAlbumArtUri = CursorUtil.getColumnIndexOrThrow(_cursor, "albumArtUri");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
+          final int _cursorIndexOfIsLocal = CursorUtil.getColumnIndexOrThrow(_cursor, "isLocal");
           final TrackEntity _result;
           if (_cursor.moveToFirst()) {
             final long _tmpId;
@@ -229,7 +288,11 @@ public final class TrackDao_Impl implements TrackDao {
             }
             final long _tmpDateAdded;
             _tmpDateAdded = _cursor.getLong(_cursorIndexOfDateAdded);
-            _result = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded);
+            final boolean _tmpIsLocal;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsLocal);
+            _tmpIsLocal = _tmp != 0;
+            _result = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded,_tmpIsLocal);
           } else {
             _result = null;
           }
@@ -263,6 +326,7 @@ public final class TrackDao_Impl implements TrackDao {
           final int _cursorIndexOfUri = CursorUtil.getColumnIndexOrThrow(_cursor, "uri");
           final int _cursorIndexOfAlbumArtUri = CursorUtil.getColumnIndexOrThrow(_cursor, "albumArtUri");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
+          final int _cursorIndexOfIsLocal = CursorUtil.getColumnIndexOrThrow(_cursor, "isLocal");
           final List<TrackEntity> _result = new ArrayList<TrackEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final TrackEntity _item;
@@ -288,7 +352,11 @@ public final class TrackDao_Impl implements TrackDao {
             }
             final long _tmpDateAdded;
             _tmpDateAdded = _cursor.getLong(_cursorIndexOfDateAdded);
-            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded);
+            final boolean _tmpIsLocal;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsLocal);
+            _tmpIsLocal = _tmp != 0;
+            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded,_tmpIsLocal);
             _result.add(_item);
           }
           return _result;
@@ -325,6 +393,7 @@ public final class TrackDao_Impl implements TrackDao {
           final int _cursorIndexOfUri = CursorUtil.getColumnIndexOrThrow(_cursor, "uri");
           final int _cursorIndexOfAlbumArtUri = CursorUtil.getColumnIndexOrThrow(_cursor, "albumArtUri");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
+          final int _cursorIndexOfIsLocal = CursorUtil.getColumnIndexOrThrow(_cursor, "isLocal");
           final List<TrackEntity> _result = new ArrayList<TrackEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final TrackEntity _item;
@@ -350,7 +419,11 @@ public final class TrackDao_Impl implements TrackDao {
             }
             final long _tmpDateAdded;
             _tmpDateAdded = _cursor.getLong(_cursorIndexOfDateAdded);
-            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded);
+            final boolean _tmpIsLocal;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsLocal);
+            _tmpIsLocal = _tmp != 0;
+            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded,_tmpIsLocal);
             _result.add(_item);
           }
           return _result;
@@ -391,6 +464,7 @@ public final class TrackDao_Impl implements TrackDao {
           final int _cursorIndexOfUri = CursorUtil.getColumnIndexOrThrow(_cursor, "uri");
           final int _cursorIndexOfAlbumArtUri = CursorUtil.getColumnIndexOrThrow(_cursor, "albumArtUri");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
+          final int _cursorIndexOfIsLocal = CursorUtil.getColumnIndexOrThrow(_cursor, "isLocal");
           final List<TrackEntity> _result = new ArrayList<TrackEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final TrackEntity _item;
@@ -416,7 +490,76 @@ public final class TrackDao_Impl implements TrackDao {
             }
             final long _tmpDateAdded;
             _tmpDateAdded = _cursor.getLong(_cursorIndexOfDateAdded);
-            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded);
+            final boolean _tmpIsLocal;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsLocal);
+            _tmpIsLocal = _tmp != 0;
+            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded,_tmpIsLocal);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+        }
+      }
+
+      @Override
+      protected void finalize() {
+        _statement.release();
+      }
+    });
+  }
+
+  @Override
+  public Flow<List<TrackEntity>> getLocalTracks() {
+    final String _sql = "SELECT * FROM tracks WHERE isLocal = 1";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    return CoroutinesRoom.createFlow(__db, false, new String[] {"tracks"}, new Callable<List<TrackEntity>>() {
+      @Override
+      @NonNull
+      public List<TrackEntity> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfTitle = CursorUtil.getColumnIndexOrThrow(_cursor, "title");
+          final int _cursorIndexOfArtist = CursorUtil.getColumnIndexOrThrow(_cursor, "artist");
+          final int _cursorIndexOfAlbum = CursorUtil.getColumnIndexOrThrow(_cursor, "album");
+          final int _cursorIndexOfAlbumId = CursorUtil.getColumnIndexOrThrow(_cursor, "albumId");
+          final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
+          final int _cursorIndexOfUri = CursorUtil.getColumnIndexOrThrow(_cursor, "uri");
+          final int _cursorIndexOfAlbumArtUri = CursorUtil.getColumnIndexOrThrow(_cursor, "albumArtUri");
+          final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
+          final int _cursorIndexOfIsLocal = CursorUtil.getColumnIndexOrThrow(_cursor, "isLocal");
+          final List<TrackEntity> _result = new ArrayList<TrackEntity>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final TrackEntity _item;
+            final long _tmpId;
+            _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final String _tmpTitle;
+            _tmpTitle = _cursor.getString(_cursorIndexOfTitle);
+            final String _tmpArtist;
+            _tmpArtist = _cursor.getString(_cursorIndexOfArtist);
+            final String _tmpAlbum;
+            _tmpAlbum = _cursor.getString(_cursorIndexOfAlbum);
+            final long _tmpAlbumId;
+            _tmpAlbumId = _cursor.getLong(_cursorIndexOfAlbumId);
+            final long _tmpDuration;
+            _tmpDuration = _cursor.getLong(_cursorIndexOfDuration);
+            final String _tmpUri;
+            _tmpUri = _cursor.getString(_cursorIndexOfUri);
+            final String _tmpAlbumArtUri;
+            if (_cursor.isNull(_cursorIndexOfAlbumArtUri)) {
+              _tmpAlbumArtUri = null;
+            } else {
+              _tmpAlbumArtUri = _cursor.getString(_cursorIndexOfAlbumArtUri);
+            }
+            final long _tmpDateAdded;
+            _tmpDateAdded = _cursor.getLong(_cursorIndexOfDateAdded);
+            final boolean _tmpIsLocal;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsLocal);
+            _tmpIsLocal = _tmp != 0;
+            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded,_tmpIsLocal);
             _result.add(_item);
           }
           return _result;

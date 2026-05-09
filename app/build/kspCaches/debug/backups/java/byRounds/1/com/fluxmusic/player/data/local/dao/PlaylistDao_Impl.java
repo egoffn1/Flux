@@ -365,6 +365,7 @@ public final class PlaylistDao_Impl implements PlaylistDao {
           final int _cursorIndexOfUri = CursorUtil.getColumnIndexOrThrow(_cursor, "uri");
           final int _cursorIndexOfAlbumArtUri = CursorUtil.getColumnIndexOrThrow(_cursor, "albumArtUri");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
+          final int _cursorIndexOfIsLocal = CursorUtil.getColumnIndexOrThrow(_cursor, "isLocal");
           final List<TrackEntity> _result = new ArrayList<TrackEntity>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final TrackEntity _item;
@@ -390,7 +391,11 @@ public final class PlaylistDao_Impl implements PlaylistDao {
             }
             final long _tmpDateAdded;
             _tmpDateAdded = _cursor.getLong(_cursorIndexOfDateAdded);
-            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded);
+            final boolean _tmpIsLocal;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsLocal);
+            _tmpIsLocal = _tmp != 0;
+            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpAlbumId,_tmpDuration,_tmpUri,_tmpAlbumArtUri,_tmpDateAdded,_tmpIsLocal);
             _result.add(_item);
           }
           return _result;
