@@ -3,6 +3,7 @@ package com.fluxmusic.player.data.repository
 import android.net.Uri
 import com.fluxmusic.player.data.local.dao.TrackDao
 import com.fluxmusic.player.data.local.mappers.toDomain
+import com.fluxmusic.player.data.local.mappers.toEntity
 import com.fluxmusic.player.data.scanner.LocalTrackScanner
 import com.fluxmusic.player.data.scanner.MediaScanner
 import com.fluxmusic.player.domain.model.Album
@@ -82,5 +83,16 @@ class MusicRepositoryImpl @Inject constructor(
 
     override suspend fun addLocalTrack(uri: Uri): Result<Track> {
         return localTrackScanner.addTrackFromUri(uri).map { it.toDomain() }
+    }
+
+    override suspend fun deleteTrack(trackId: Long) {
+        trackDao.deleteTrackById(trackId)
+    }
+
+    override suspend fun ensureTrackExists(track: Track) {
+        val existing = trackDao.getTrackById(track.id)
+        if (existing == null) {
+            trackDao.insert(track.toEntity())
+        }
     }
 }

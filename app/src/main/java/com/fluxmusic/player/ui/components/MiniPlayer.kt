@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -32,7 +33,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,11 +49,11 @@ fun MiniPlayer(
     isPlaying: Boolean,
     progress: Float,
     onPlayPauseClick: () -> Unit,
+    onPreviousClick: () -> Unit,
     onNextClick: () -> Unit,
     onClick: () -> Unit,
     visible: Boolean = true
 ) {
-    // Animation for play/pause button
     val playPauseScale by animateFloatAsState(
         targetValue = if (isPlaying) 1f else 1.1f,
         animationSpec = spring(
@@ -63,15 +63,13 @@ fun MiniPlayer(
         label = "playPauseScale"
     )
 
-    // Animation for progress bar color
     val progressColor by animateColorAsState(
         targetValue = MaterialTheme.colorScheme.primary,
         label = "progressColor"
     )
 
-    val trackTitle = remember(track?.id) { track?.title ?: "" }
-    val trackArtist = remember(track?.id) { track?.artist ?: "" }
-    val albumArtUri = remember(track?.id) { track?.albumArtUri }
+    val trackTitle = track?.title ?: ""
+    val trackArtist = track?.artist ?: ""
 
     AnimatedVisibility(
         visible = visible && track != null,
@@ -90,23 +88,21 @@ fun MiniPlayer(
             )
         ) + androidx.compose.animation.fadeOut()
     ) {
-        Surface(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick),
-            tonalElevation = 8.dp,
-            shadowElevation = 8.dp,
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                .clickable(onClick = onClick)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
         ) {
             Column {
-                // Animated progress bar
                 LinearProgressIndicator(
                     progress = { progress.coerceIn(0f, 1f) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(3.dp),
                     color = progressColor,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    trackColor = MaterialTheme.colorScheme.surface
                 )
 
                 Row(
@@ -115,7 +111,6 @@ fun MiniPlayer(
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Album art with rounded corners
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -123,16 +118,17 @@ fun MiniPlayer(
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (albumArtUri != null) {
+                        if (track != null) {
                             AsyncImage(
-                                model = albumArtUri,
+                                model = track.albumArtUri ?: track.uri,
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(48.dp)
                                     .clip(RoundedCornerShape(8.dp)),
                                 contentScale = ContentScale.Crop
                             )
-                        } else {
+                        }
+                        if (track?.albumArtUri == null) {
                             Icon(
                                 imageVector = Icons.Default.MusicNote,
                                 contentDescription = null,
@@ -143,7 +139,6 @@ fun MiniPlayer(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // Track info
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = trackTitle,
@@ -160,7 +155,14 @@ fun MiniPlayer(
                         )
                     }
 
-                    // Animated play/pause button
+                    IconButton(onClick = onPreviousClick) {
+                        Icon(
+                            imageVector = Icons.Default.SkipPrevious,
+                            contentDescription = "Previous",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
                     IconButton(
                         onClick = onPlayPauseClick,
                         modifier = Modifier.scale(playPauseScale)
@@ -172,7 +174,6 @@ fun MiniPlayer(
                         )
                     }
 
-                    // Next button
                     IconButton(onClick = onNextClick) {
                         Icon(
                             imageVector = Icons.Default.SkipNext,

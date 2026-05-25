@@ -67,11 +67,22 @@ class MediaScanner @Inject constructor(
                     cursor.getLong(albumIdColumn)
                 )
 
+                var rawArtist = cursor.getString(artistColumn) ?: ""
+                var rawTitle = cursor.getString(titleColumn) ?: "Unknown"
+
+                if (isUnknownArtist(rawArtist)) {
+                    val parsed = parseArtistFromTitle(rawTitle)
+                    if (parsed != null) {
+                        rawTitle = parsed.second
+                        rawArtist = parsed.first
+                    }
+                }
+
                 tracks.add(
                     TrackEntity(
                         id = id,
-                        title = cursor.getString(titleColumn) ?: "Unknown",
-                        artist = cursor.getString(artistColumn) ?: "Unknown Artist",
+                        title = rawTitle,
+                        artist = rawArtist.ifBlank { "Unknown" },
                         album = cursor.getString(albumColumn) ?: "Unknown Album",
                         albumId = cursor.getLong(albumIdColumn),
                         duration = cursor.getLong(durationColumn),
@@ -84,7 +95,38 @@ class MediaScanner @Inject constructor(
             }
         }
 
-        trackDao.deleteMediaStoreTracks()
-        trackDao.insertAll(tracks)
+        trackDao.replaceAll(tracks)
+    }
+
+    companion object {
+        private val SEPARATORS = listOf(" — ", " – ", " - ", " : ", " :: ", " / ", " \\ ", " | ")
+
+        private val KNOWN_UNKNOWN = setOf(
+            "<unknown>", "unknown", "unknown artist", "", " ",
+            "artist unknown"
+        )
+
+        fun isUnknownArtist(artist: String): Boolean =
+            artist.isBlank() || artist.trim().lowercase() in KNOWN_UNKNOWN
+
+        fun parseArtistFromTitle(title: String): Pair<String, String>? {
+            val trimmed = title.trim()
+            for (sep in SEPARATORS) {
+                val idx = trimmed.indexOf(sep)
+                if (idx > 0) {
+                    val possibleArtist = trimmed.substring(0, idx).trim()
+                    val possibleTitle = trimmed.substring(idx + sep.length).trim()
+                    if (possibleArtist.isNotBlank() && possibleTitle.isNotBlank()
+                        && possibleArtist.length < possibleTitle.length * 2
+                        && possibleArtist.length in 2..60
+                        && !possibleArtist.contains(" - ")
+                        && !possibleArtist.all { it.isUpperCase() || it.isDigit() || it == ' ' }
+                    ) {
+                        return possibleArtist to possibleTitle
+                    }
+                }
+            }
+            return null
+        }
     }
 }

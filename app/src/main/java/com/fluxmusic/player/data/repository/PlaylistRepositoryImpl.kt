@@ -55,6 +55,14 @@ class PlaylistRepositoryImpl @Inject constructor(
         playlistDao.removeTrackFromPlaylist(playlistId, trackId)
 
     override suspend fun reorderTracks(playlistId: Long, fromIndex: Int, toIndex: Int) {
-        // Implementation would require fetching all tracks and updating positions
+        val tracks = playlistDao.getPlaylistTracksSync(playlistId)
+        val mutableTracks = tracks.toMutableList()
+        if (fromIndex < 0 || fromIndex >= mutableTracks.size) return
+        val to = toIndex.coerceIn(0, mutableTracks.size - 1)
+        val item = mutableTracks.removeAt(fromIndex)
+        mutableTracks.add(to, item)
+        mutableTracks.forEachIndexed { index, track ->
+            playlistDao.updateTrackPosition(playlistId, track.id, index)
+        }
     }
 }

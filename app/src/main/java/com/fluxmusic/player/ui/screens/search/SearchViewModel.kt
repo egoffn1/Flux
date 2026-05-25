@@ -7,7 +7,6 @@ import com.fluxmusic.player.domain.repository.FavoritesRepository
 import com.fluxmusic.player.domain.repository.MusicRepository
 import com.fluxmusic.player.domain.usecases.SearchTracksUseCase
 import com.fluxmusic.player.playback.MediaSessionConnection
-import com.fluxmusic.player.playback.QueueManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -26,7 +25,7 @@ import javax.inject.Inject
 class SearchViewModel @Inject constructor(
     private val searchTracksUseCase: SearchTracksUseCase,
     private val favoritesRepository: FavoritesRepository,
-    private val queueManager: QueueManager,
+    private val musicRepository: MusicRepository,
     private val mediaSessionConnection: MediaSessionConnection
 ) : ViewModel() {
 
@@ -47,8 +46,8 @@ class SearchViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            favoritesRepository.getFavoriteTracks().collect { tracks ->
-                _favoriteTrackIds.value = tracks.map { it.id }.toSet()
+            favoritesRepository.getFavoriteIds().collect { ids ->
+                _favoriteTrackIds.value = ids
             }
         }
     }
@@ -59,13 +58,21 @@ class SearchViewModel @Inject constructor(
 
     fun playTrack(track: Track, tracks: List<Track>) {
         val index = tracks.indexOfFirst { it.id == track.id }
-        queueManager.setQueue(tracks, index.coerceAtLeast(0))
-        mediaSessionConnection.playTracks(tracks, index.coerceAtLeast(0))
+        if (index < 0) return
+        mediaSessionConnection.playTracks(tracks, index)
     }
 
-    fun toggleFavorite(trackId: Long) {
+    fun toggleFavorite(track: Track) {
         viewModelScope.launch {
-            favoritesRepository.toggleFavorite(trackId)
+            try {
+                musicRepository.ensureTrackExists(track)
+                favoritesRepository.toggleFavorite(track.id)
+                _favoriteTrackIds.value = if (track.id in _favoriteTrackIds.value) {
+                    _favoriteTrackIds.value - track.id
+                } else {
+                    _favoriteTrackIds.value + track.id
+                }
+            } catch (_: Exception) { }
         }
     }
 }

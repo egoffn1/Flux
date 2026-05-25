@@ -15,4 +15,6 @@ interface MusicRepository {
     suspend fun getTrackById(id: Long): Track?
     suspend fun scanMediaStore()
     suspend fun addLocalTrack(uri: android.net.Uri): Result<Track>
+    suspend fun deleteTrack(trackId: Long)
+    suspend fun ensureTrackExists(track: Track)
 }

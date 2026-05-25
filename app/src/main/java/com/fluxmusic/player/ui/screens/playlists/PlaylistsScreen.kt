@@ -24,6 +24,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.AlertDialog
@@ -73,11 +75,20 @@ fun PlaylistsScreen(
     var selectedPlaylist by remember { mutableStateOf<Playlist?>(null) }
     var showAddTrackSheet by remember { mutableStateOf(false) }
     var trackToAdd by remember { mutableStateOf<Track?>(null) }
+    var selectedTrackForOptions by remember { mutableStateOf<Track?>(null) }
+    var showTrackOptionsSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
+    val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsState()
 
     val playlistTracks = selectedPlaylist?.let { playlist ->
-        viewModel.getPlaylistTracks(playlist.id).collectAsState()
+        viewModel.getPlaylistTracks(playlist.id)
+    }
+    val playlistTracksValue by playlistTracks?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
+
+    fun showTrackOptions(track: Track) {
+        selectedTrackForOptions = track
+        showTrackOptionsSheet = true
     }
 
     Scaffold(
@@ -119,7 +130,7 @@ fun PlaylistsScreen(
     ) { padding ->
         if (selectedPlaylist != null) {
             // Playlist detail view
-            val tracks = playlistTracks?.value ?: emptyList()
+            val tracks = playlistTracksValue
             if (tracks.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -150,15 +161,17 @@ fun PlaylistsScreen(
                         .padding(padding),
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    items(tracks) { track ->
+                    items(tracks, key = { it.id }) { track ->
                         TrackItem(
                             track = track,
-                            onTrackClick = { /* Play track */ },
-                            onFavoriteClick = { /* Add to favorites */ },
-                            onMoreClick = { /* More options */ },
-                            onLongClick = { 
-                                // Long press to remove
-                                viewModel.removeTrackFromPlaylist(selectedPlaylist!!.id, track.id)
+                            isFavorite = track.id in favoriteTrackIds,
+                            onTrackClick = { viewModel.playTrack(track, tracks) },
+                            onFavoriteClick = { viewModel.toggleFavorite(track) },
+                            onMoreClick = { showTrackOptions(track) },
+                            onLongClick = {
+                                selectedPlaylist?.let { playlist ->
+                                    viewModel.removeTrackFromPlaylist(playlist.id, track.id)
+                                }
                             }
                         )
                     }
@@ -282,7 +295,7 @@ fun PlaylistsScreen(
                                     .fillMaxWidth()
                                     .clickable {
                                         trackToAdd?.let { track ->
-                                            viewModel.addTrackToPlaylist(playlist.id, track.id)
+                                            viewModel.addTrackToPlaylist(playlist.id, track)
                                             scope.launch {
                                                 sheetState.hide()
                                                 showAddTrackSheet = false
@@ -307,6 +320,99 @@ fun PlaylistsScreen(
                                 )
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        // Track options bottom sheet
+        if (showTrackOptionsSheet && selectedTrackForOptions != null) {
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showTrackOptionsSheet = false
+                    selectedTrackForOptions = null
+                },
+                sheetState = sheetState
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 32.dp)
+                ) {
+                    Text(
+                        text = selectedTrackForOptions!!.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    Text(
+                        text = selectedTrackForOptions!!.artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.toggleFavorite(selectedTrackForOptions!!)
+                                scope.launch {
+                                    sheetState.hide()
+                                    showTrackOptionsSheet = false
+                                    selectedTrackForOptions = null
+                                }
+                            }
+                            .padding(vertical = 12.dp, horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (selectedTrackForOptions!!.id in favoriteTrackIds) 
+                                Icons.Filled.Favorite 
+                            else Icons.Filled.FavoriteBorder,
+                            contentDescription = null,
+                            tint = if (selectedTrackForOptions!!.id in favoriteTrackIds)
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = if (selectedTrackForOptions!!.id in favoriteTrackIds) 
+                                "Remove from favorites" else "Add to favorites",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedPlaylist?.let { playlist ->
+                                    viewModel.removeTrackFromPlaylist(playlist.id, selectedTrackForOptions!!.id)
+                                }
+                                scope.launch {
+                                    sheetState.hide()
+                                    showTrackOptionsSheet = false
+                                    selectedTrackForOptions = null
+                                }
+                            }
+                            .padding(vertical = 12.dp, horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Remove from playlist",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             }

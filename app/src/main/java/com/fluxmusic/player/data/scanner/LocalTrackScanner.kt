@@ -18,23 +18,31 @@ class LocalTrackScanner @Inject constructor(
     private val trackDao: TrackDao
 ) {
     suspend fun addTrackFromUri(uri: Uri): Result<TrackEntity> = withContext(Dispatchers.IO) {
+        var retriever: MediaMetadataRetriever? = null
         try {
-            val retriever = MediaMetadataRetriever()
+            retriever = MediaMetadataRetriever()
             retriever.setDataSource(context, uri)
 
-            val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+            var title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
                 ?: getFileName(uri) ?: "Unknown Track"
             
-            val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                ?: "Unknown Artist"
+            var artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                ?: ""
+
+            if (MediaScanner.isUnknownArtist(artist)) {
+                val parsed = MediaScanner.parseArtistFromTitle(title)
+                if (parsed != null) {
+                    title = parsed.second
+                    artist = parsed.first
+                }
+            }
+            if (artist.isBlank()) artist = "Unknown Artist"
             
             val album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
                 ?: "Unknown Album"
             
             val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
                 ?: 0L
-
-            retriever.release()
 
             val trackEntity = TrackEntity(
                 id = System.currentTimeMillis(),
@@ -53,6 +61,8 @@ class LocalTrackScanner @Inject constructor(
             Result.success(trackEntity)
         } catch (e: Exception) {
             Result.failure(e)
+        } finally {
+            retriever?.release()
         }
     }
 

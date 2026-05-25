@@ -6,11 +6,12 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Album
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlaylistPlay
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(
@@ -60,7 +61,14 @@ sealed class Screen(
         fun createRoute(playlistId: Long) = "playlist/$playlistId"
     }
 
+    data object Settings : Screen(
+        route = "settings",
+        title = "Settings",
+        selectedIcon = Icons.Filled.Settings,
+        unselectedIcon = Icons.Outlined.Settings
+    )
+
     companion object {
-        val bottomNavItems = listOf(Library, Playlists, Search)
+        val bottomNavItems = listOf(Library, Playlists, Search, Settings)
     }
 }

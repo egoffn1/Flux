@@ -7,14 +7,6 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "favorites",
-    foreignKeys = [
-        ForeignKey(
-            entity = TrackEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["trackId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
     indices = [Index("trackId")]
 )
 data class FavoriteEntity(

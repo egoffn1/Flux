@@ -16,64 +16,46 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-object FluxColors {
-    // Google Green (primary)
-    val GoogleGreen = Color(0xFF1DB954)
-    val GoogleGreenLight = Color(0xFF1ED760)
-    val GoogleGreenDark = Color(0xFF14833B)
-    
-    // Google Music accent colors
-    val AccentRed = Color(0xFFEA4335)
-    val AccentBlue = Color(0xFF4285F4)
-    val AccentYellow = Color(0xFFFBBC05)
-    
-    // Dark theme surfaces
-    val DarkSurface = Color(0xFF121212)
-    val DarkSurfaceVariant = Color(0xFF1E1E1E)
-    val DarkBackground = Color(0xFF000000)
-    
-    // Light theme surfaces
-    val LightSurface = Color(0xFFFAFAFA)
-    val LightSurfaceVariant = Color(0xFFF5F5F5)
-    val LightBackground = Color(0xFFFFFFFF)
-}
-
-private val DarkColorScheme = darkColorScheme(
-    primary = FluxColors.GoogleGreen,
-    onPrimary = Color.Black,
-    primaryContainer = FluxColors.GoogleGreenDark,
-    onPrimaryContainer = Color.White,
-    secondary = FluxColors.AccentBlue,
+private val LightColorScheme = lightColorScheme(
+    primary = Color(0xFF6750A4),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFEADDFF),
+    onPrimaryContainer = Color(0xFF21005D),
+    secondary = Color(0xFF625B71),
     onSecondary = Color.White,
-    tertiary = FluxColors.AccentRed,
+    secondaryContainer = Color(0xFFE8DEF8),
+    onSecondaryContainer = Color(0xFF1D192B),
+    tertiary = Color(0xFF7D5260),
     onTertiary = Color.White,
-    background = FluxColors.DarkBackground,
-    onBackground = Color.White,
-    surface = FluxColors.DarkSurface,
-    onSurface = Color.White,
-    surfaceVariant = FluxColors.DarkSurfaceVariant,
-    onSurfaceVariant = Color(0xFFB3B3B3),
-    outline = Color(0xFF404040),
-    outlineVariant = Color(0xFF2A2A2A)
+    background = Color(0xFFFFFBFE),
+    onBackground = Color(0xFF1C1B1F),
+    surface = Color(0xFFFFFBFE),
+    onSurface = Color(0xFF1C1B1F),
+    surfaceVariant = Color(0xFFF3EDF7),
+    onSurfaceVariant = Color(0xFF49454F),
+    error = Color(0xFFB3261E),
+    onError = Color.White
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = FluxColors.GoogleGreen,
-    onPrimary = Color.White,
-    primaryContainer = FluxColors.GoogleGreenLight,
-    onPrimaryContainer = Color.Black,
-    secondary = FluxColors.AccentBlue,
-    onSecondary = Color.White,
-    tertiary = FluxColors.AccentRed,
-    onTertiary = Color.White,
-    background = FluxColors.LightBackground,
-    onBackground = Color.Black,
-    surface = FluxColors.LightSurface,
-    onSurface = Color.Black,
-    surfaceVariant = FluxColors.LightSurfaceVariant,
-    onSurfaceVariant = Color(0xFF666666),
-    outline = Color(0xFFE0E0E0),
-    outlineVariant = Color(0xFFEEEEEE)
+private val DarkColorScheme = darkColorScheme(
+    primary = Color(0xFFD0BCFF),
+    onPrimary = Color(0xFF381E72),
+    primaryContainer = Color(0xFF4F378B),
+    onPrimaryContainer = Color(0xFFEADDFF),
+    secondary = Color(0xFFCCC2DC),
+    onSecondary = Color(0xFF332D41),
+    secondaryContainer = Color(0xFF4A4458),
+    onSecondaryContainer = Color(0xFFE8DEF8),
+    tertiary = Color(0xFFEFB8C8),
+    onTertiary = Color(0xFF492532),
+    background = Color(0xFF1C1B1F),
+    onBackground = Color(0xFFE6E1E5),
+    surface = Color(0xFF1C1B1F),
+    onSurface = Color(0xFFE6E1E5),
+    surfaceVariant = Color(0xFF49454F),
+    onSurfaceVariant = Color(0xFFCAC4D0),
+    error = Color(0xFFF2B8B5),
+    onError = Color(0xFF601410)
 )
 
 @Composable
@@ -90,7 +72,7 @@ fun FluxTheme(
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
-    
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {

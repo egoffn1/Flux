@@ -13,12 +13,6 @@ import androidx.room.Index
             parentColumns = ["id"],
             childColumns = ["playlistId"],
             onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = TrackEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["trackId"],
-            onDelete = ForeignKey.CASCADE
         )
     ],
     indices = [Index("playlistId"), Index("trackId")]

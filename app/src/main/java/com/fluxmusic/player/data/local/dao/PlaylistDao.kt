@@ -22,6 +22,14 @@ interface PlaylistDao {
     """)
     fun getPlaylistTracks(playlistId: Long): Flow<List<TrackEntity>>
 
+    @Query("""
+        SELECT t.* FROM tracks t
+        INNER JOIN playlist_tracks pt ON t.id = pt.trackId
+        WHERE pt.playlistId = :playlistId
+        ORDER BY pt.position ASC
+    """)
+    suspend fun getPlaylistTracksSync(playlistId: Long): List<TrackEntity>
+
     @Query("SELECT COUNT(*) FROM playlist_tracks WHERE playlistId = :playlistId")
     suspend fun getPlaylistTrackCount(playlistId: Long): Int
 
