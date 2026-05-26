@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -26,8 +27,11 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.Reorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -66,8 +70,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistsScreen(
-    viewModel: PlaylistsViewModel = hiltViewModel(),
-    onAddToPlaylist: ((Track) -> Unit)? = null
+    viewModel: PlaylistsViewModel = hiltViewModel()
 ) {
     val playlists by viewModel.playlists.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -81,6 +84,7 @@ fun PlaylistsScreen(
     val scope = rememberCoroutineScope()
     val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsState()
 
+    var isReorderMode by remember { mutableStateOf(false) }
     val playlistTracks = selectedPlaylist?.let { playlist ->
         viewModel.getPlaylistTracks(playlist.id)
     }
@@ -102,8 +106,20 @@ fun PlaylistsScreen(
                 },
                 navigationIcon = {
                     if (selectedPlaylist != null) {
-                        IconButton(onClick = { selectedPlaylist = null }) {
+                        IconButton(onClick = { selectedPlaylist = null; isReorderMode = false }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                },
+                actions = {
+                    if (selectedPlaylist != null && playlistTracksValue.size > 1) {
+                        IconButton(onClick = { isReorderMode = !isReorderMode }) {
+                            Icon(
+                                Icons.Default.Reorder,
+                                contentDescription = if (isReorderMode) "Done" else "Reorder",
+                                tint = if (isReorderMode) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 },
@@ -161,19 +177,60 @@ fun PlaylistsScreen(
                         .padding(padding),
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    items(tracks, key = { it.id }) { track ->
-                        TrackItem(
-                            track = track,
-                            isFavorite = track.id in favoriteTrackIds,
-                            onTrackClick = { viewModel.playTrack(track, tracks) },
-                            onFavoriteClick = { viewModel.toggleFavorite(track) },
-                            onMoreClick = { showTrackOptions(track) },
-                            onLongClick = {
-                                selectedPlaylist?.let { playlist ->
-                                    viewModel.removeTrackFromPlaylist(playlist.id, track.id)
+                    itemsIndexed(tracks, key = { _, track -> track.id }) { index, track ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (isReorderMode) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.width(40.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            selectedPlaylist?.let { playlist ->
+                                                if (index > 0) viewModel.reorderTracks(playlist.id, index, index - 1)
+                                            }
+                                        },
+                                        enabled = index > 0,
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(Icons.Default.KeyboardArrowUp, "Move up",
+                                            tint = if (index > 0) MaterialTheme.colorScheme.onSurface
+                                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            selectedPlaylist?.let { playlist ->
+                                                if (index < tracks.lastIndex) viewModel.reorderTracks(playlist.id, index, index + 1)
+                                            }
+                                        },
+                                        enabled = index < tracks.lastIndex,
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(Icons.Default.KeyboardArrowDown, "Move down",
+                                            tint = if (index < tracks.lastIndex) MaterialTheme.colorScheme.onSurface
+                                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+                                    }
                                 }
+                                Spacer(modifier = Modifier.width(4.dp))
                             }
-                        )
+                            Box(modifier = Modifier.weight(1f)) {
+                                TrackItem(
+                                    track = track,
+                                    isFavorite = track.id in favoriteTrackIds,
+                                    onTrackClick = { viewModel.playTrack(track, tracks) },
+                                    onFavoriteClick = { viewModel.toggleFavorite(track) },
+                                    onMoreClick = { showTrackOptions(track) },
+                                    onLongClick = {
+                                        selectedPlaylist?.let { playlist ->
+                                            viewModel.removeTrackFromPlaylist(playlist.id, track.id)
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -307,9 +364,9 @@ fun PlaylistsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.PlaylistPlay,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
+                                imageVector = Icons.Default.PlaylistPlay,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(

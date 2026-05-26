@@ -1,0 +1,300 @@
+# ============================================================
+# FLUX MUSIC PLAYER — ПОЛНАЯ ДОКУМЕНТАЦИЯ ПРОЕКТА
+# ============================================================
+# Последнее обновление: 26.05.2026
+# ============================================================
+
+## 1. РАСПОЛОЖЕНИЕ
+   /var/home/link/Flux
+
+## 2. СБОРКА И ЗАПУСК
+   - Debug APK:  ./gradlew assembleDebug
+   - Удаление:   adb uninstall com.fluxmusic.player
+   - Установка:  adb install -r app/build/outputs/apk/debug/app-debug.apk
+   - ВСЕГДА удаляй старую версию перед установкой новой:
+     adb uninstall com.fluxmusic.player && adb install -r app/build/outputs/apk/debug/app-debug.apk
+   - Java:       /home/link/.sdkman/candidates/java/17.0.17-tem
+   - SDK:        /home/link/android-sdk
+
+## 3. ТЕХСТЕК
+   - Язык: 100% Kotlin
+   - UI: Jetpack Compose + Material 3
+   - Архитектура: Clean Architecture + MVVM
+   - Мультимедиа: Media3 (ExoPlayer + MediaSessionService)
+   - Локальное хранилище: Room + DataStore
+   - DI: Dagger Hilt
+   - Загрузка изображений: Coil (с дисковым кэшированием)
+   - Адаптивные цвета: Material You Dynamic Colors + кастомная палитра
+   - Минимальный API: 26, Target: 34
+   - Kotlin: 1.9.21, Compose BOM: 2024.02.00, Compose Compiler: 1.5.6
+
+## 4. СТРУКТУРА ДИРЕКТОРИЙ
+   app/src/main/java/com/fluxmusic/player/
+   ├── FluxApp.kt                 # Application class + Coil disk cache
+   ├── MainActivity.kt            # Главная активность + NavHost + тема
+   ├── di/
+   │   └── AppModule.kt           # Hilt DI модуль
+   ├── data/
+   │   ├── local/
+   │   │   ├── FluxDatabase.kt    # Room БД
+   │   │   ├── UserPreferences.kt # DataStore preferences (тема, EQ, волна, обновления)
+   │   │   ├── dao/
+   │   │   │   ├── FavoriteDao.kt
+   │   │   │   ├── PlaylistDao.kt
+   │   │   │   └── TrackDao.kt
+   │   │   ├── entity/
+   │   │   │   ├── FavoriteEntity.kt
+   │   │   │   ├── PlaylistEntity.kt
+   │   │   │   ├── PlaylistTrackCrossRef.kt
+   │   │   │   └── TrackEntity.kt
+   │   │   └── mappers/
+   │   │       └── TrackMapper.kt
+   │   ├── repository/
+   │   │   ├── FavoritesRepositoryImpl.kt
+   │   │   ├── MusicRepositoryImpl.kt
+   │   │   └── PlaylistRepositoryImpl.kt
+   │   ├── scanner/
+   │   │   ├── LocalTrackScanner.kt
+   │   │   └── MediaScanner.kt
+   │   ├── download/
+   │   │   └── DownloadHelper.kt
+   │   └── update/
+   │       ├── AppUpdater.kt
+   │       └── UpdateChecker.kt
+   ├── domain/
+   │   ├── model/
+   │   │   ├── Album.kt
+   │   │   ├── Artist.kt
+   │   │   ├── Playlist.kt
+   │   │   ├── RepeatMode.kt
+   │   │   └── Track.kt
+   │   ├── repository/
+   │   │   ├── FavoritesRepository.kt
+   │   │   ├── MusicRepository.kt
+   │   │   └── PlaylistRepository.kt
+   │   └── usecases/
+   │       ├── GetAlbumsUseCase.kt
+   │       ├── GetAllTracksUseCase.kt
+   │       ├── GetArtistsUseCase.kt
+   │       ├── GetRecommendationsUseCase.kt
+   │       ├── GetSkySoundRecommendationsUseCase.kt
+   │       └── SearchTracksUseCase.kt
+   ├── network/
+   │   ├── SearchResult.kt
+   │   └── SkySoundApi.kt
+   ├── playback/
+   │   ├── AudioEqualizer.kt       # Эквалайзер: 10 пресетов, band sliders, bass boost
+   │   ├── BeatDetector.kt
+   │   ├── BeatState.kt           # Kotlin object, beatIntensity + bpm StateFlow
+   │   ├── MediaSessionConnection.kt  # ExoPlayer MediaController bridge
+   │   ├── MusicService.kt        # MediaSessionService + кастомное уведомление с like/±10s
+   │   ├── QueueManager.kt        # @Singleton, currentTrack, queue, shuffle, repeat
+   │   ├── SleepTimer.kt
+   │   └── WaveRecommendationManager.kt
+   └── ui/
+       ├── components/
+       │   ├── AmbientWaveBackground.kt
+       │   ├── MiniPlayer.kt
+       │   ├── TrackItem.kt
+       │   ├── WaveProgressBar.kt
+       │   └── WaveVisualizer.kt  # vsync-синхронизированная анимация
+       ├── navigation/
+       │   └── Screen.kt
+       ├── screens/
+       │   ├── library/
+       │   │   ├── LibraryScreen.kt
+       │   │   └── LibraryViewModel.kt
+       │   ├── search/
+       │   │   ├── SearchScreen.kt
+       │   │   └── SearchViewModel.kt
+       │   ├── playlists/
+       │   │   ├── PlaylistsScreen.kt
+       │   │   └── PlaylistsViewModel.kt
+       │   ├── nowplaying/
+       │   │   └── NowPlayingScreen.kt  # Адаптивный: портрет (Column) / ландшафт (Row)
+       │   ├── album/
+       │   │   └── AlbumDetailScreen.kt
+       │   ├── artist/
+       │   │   └── ArtistDetailScreen.kt
+       │   └── settings/
+       │       ├── SettingsScreen.kt     # EQ + presets + band sliders + темы + обновления
+       │       └── SettingsViewModel.kt
+       └── theme/
+           ├── Theme.kt             # FluxTheme: System/Light/Dark + Dynamic Colors on/off
+           └── Type.kt
+
+## 5. КЛЮЧЕВЫЕ КОМПОНЕНТЫ
+
+### 5.1 MusicService.kt
+   - @AndroidEntryPoint MediaSessionService
+   - Инжектит: QueueManager, AudioEqualizer, FavoritesRepository
+   - ExoPlayer + MediaSession
+   - Уведомление (onUpdateNotification):
+     * 6 actions: Previous, Play/Pause, Next, -10s, +10s, Like (звёздочка)
+     * Compact: 3 кнопки (Prev, Play/Pause, Next)
+     * Обложка через MediaMetadataRetriever (IO thread) + кэш per-track
+     * Like-статус через FavoritesRepository
+   - handleCustomAction: ACTION_REWIND / ACTION_FORWARD / ACTION_LIKE
+   - startForeground при каждом обновлении (album art loaded, like toggled)
+
+### 5.2 AudioEqualizer.kt
+   - @Singleton, injectable
+   - 10 прессетов: Normal, Classical, Dance, Flat, Folk, Heavy Metal, Hip Hop, Jazz, Pop, Rock
+   - PRESET_BANDS: shortArray с 8 полосами (-600..600)
+   - attachToSession(sessionId), applyPreset(preset), setBassBoost(level)
+   - setBandLevel(band, level), getBandLevels(), getCenterFrequencies() — для band sliders
+   - LoudnessEnhancer для Bass Boost
+
+### 5.3 NowPlayingScreen.kt
+   - Полноэкранный плеер
+   - Автоматическое определение ориентации (LocalConfiguration.current.orientation)
+   - Portrait: Column (AlbumArt → TrackInfo → WaveProgressBar → Controls)
+   - Landscape: Row (AlbumArt 40% слева, Controls 60% справа)
+   - Анимации: pulseScale, iconPlayFraction, iconGlowPhase, playButtonScale, skipScale, favoriteTint
+   - AlbumArtCard с AmbientWaveBackground + WaveVisualizer + AnimatedContent
+   - ControlsSection: Shuffle, Previous, Play/Pause, Next, Play Similar, Repeat
+   - WaveProgressBar с перемоткой и formatDuration
+   - ModalBottomSheet для добавления в плейлист
+
+### 5.4 Theme.kt
+   - FluxTheme(themeMode, dynamicColor)
+   - themeMode: 0=System, 1=Light, 2=Dark
+   - dynamicColor: true=Material You (Android 12+), false=кастомная палитра
+   - LightColorScheme / DarkColorScheme (Material 3)
+   - SideEffect: statusBarColor, navigationBarColor transparent
+   - Читается из UserPreferences в MainActivity
+
+### 5.5 WaveVisualizer.kt
+   - vsync-синхронизированная анимация через LaunchedEffect + withFrameMillis
+   - mutableFloatStateOf для phase (0..2π) и smoothPhase
+   - animateFloatAsState для playFraction (400ms, FastOutSlowInEasing)
+   - 4 типа волны: BARS, SINE, CIRCULAR, GRADIENT_BARS
+   - CompositionLocals: LocalWaveType, LocalPlayingTrackId
+   - TrackItem читает BeatState.beatIntensity для пульсации
+
+### 5.6 FluxApp.kt
+   - Coil ImageLoader с:
+     * MemoryCache: 25% of heap
+     * DiskCache: 50MB, cacheDir/coil_cache
+     * crossfade: true
+
+### 5.7 SettingsScreen.kt
+   - Sound: Equalizer (вкл/выкл + presets + band sliders с частотами + bass boost)
+   - Wave Visualization: вкл/выкл + style + bar count + speed
+   - Theme: Dynamic Colors on/off + Theme Mode (System/Light/Dark)
+   - Updates: auto-check + check now
+   - About: version, GitHub link
+
+## 6. ЧТО СДЕЛАНО (ИСТОРИЯ ИЗМЕНЕНИЙ)
+
+### 6.1 Ambient wave — убран лишний Box
+   - Файл: AmbientWaveBackground.kt
+
+### 6.2 Circular wave — сглаживание и прозрачность
+   - Файл: AmbientWaveBackground.kt
+
+### 6.3 TrackItem album art — исправление
+   - Файл: TrackItem.kt
+
+### 6.4 MusicService notification — album art
+   - Файл: MusicService.kt
+
+### 6.5 BeatState.reset() — bpm
+   - Файл: BeatState.kt
+
+### 6.6 FormatDurationTest — исправление
+   - Файл: test/.../FormatDurationTest.kt
+
+### 6.7 SearchViewModel — очистка
+   - Файл: SearchViewModel.kt
+
+### 6.8 TrackItem — иконка с волной
+   - Файл: TrackItem.kt
+
+### 6.9 LocalWaveType CompositionLocal
+   - Файл: WaveVisualizer.kt
+
+### 6.10 LocalPlayingTrackId CompositionLocal
+   - Файл: WaveVisualizer.kt
+
+### 6.11 GitHub release v1.2.0
+   - Все изменения запушены, создан релиз
+
+### 6.12 Coil disk cache — FluxApp
+   - Файл: FluxApp.kt
+   - MemoryCache 25% + DiskCache 50MB + crossfade
+
+### 6.13 MusicService — полный редизайн уведомления
+   - Файл: MusicService.kt
+   - 6 action-кнопок: Previous, Play/Pause, Next, -10s, +10s, Like
+   - Album art кэшируется per-track, подгружается асинхронно
+   - Like через FavoritesRepository, иконка btn_star_big_on/off
+   - Инжектирован FavoritesRepository
+
+### 6.14 NowPlayingScreen — адаптация под ориентацию
+   - Файл: NowPlayingScreen.kt
+   - Portrait: Column (AlbumArt → Controls)
+   - Landscape: Row (AlbumArt 40% ← → Controls 60%)
+   - LocalConfiguration.current.orientation
+   - Локальные @Composable функции: AlbumArtSection, ControlsSection
+
+### 6.15 AudioEqualizer — band sliders в Settings
+   - Файлы: AudioEqualizer.kt, SettingsScreen.kt, SettingsViewModel.kt
+   - Вертикальные Slider для каждой частотной полосы
+   - getCenterFrequencies() / getBandLevels() / setBandLevel()
+   - Пресеты обновляют ползунки автоматически
+
+### 6.16 Кастомные темы (System/Light/Dark + Dynamic)
+   - Файлы: Theme.kt, UserPreferences.kt, MainActivity.kt, SettingsScreen.kt, SettingsViewModel.kt
+   - ThemeMode: 0=System, 1=Light, 2=Dark
+   - Dynamic Colors: вкл/выкл
+   - Настройки в DataStore + UI в Settings
+
+### 6.17 Локализация (RU)
+   - Файл: res/values-ru/strings.xml
+   - Полный перевод всех строк на русский
+
+### 6.18 WaveVisualizer — vsync-анимация
+   - Файл: WaveVisualizer.kt
+   - LaunchedEffect + withFrameMillis вместо infiniteRepeatable
+   - mutableFloatStateOf для phase/smoothPhase
+   - Плавное затухание через playFraction (400ms)
+
+## 7. ДЕТАЛИ АНИМАЦИИ ВОЛНЫ В TrackItem
+   (см. раздел 7 оригинального документа — без изменений)
+
+## 8. ПУТЬ ДАННЫХ ТЕКУЩЕГО ТРЕКА
+   (см. раздел 8 оригинального документа — без изменений)
+
+## 9. ВАЖНЫЕ ЗАМЕЧАНИЯ
+   - TrackItem не требует isPlaying от родителя — определяет сам через LocalPlayingTrackId
+   - BeatState — Kotlin object, доступен отовсюду без DI
+   - QueueManager — @Singleton, injectable через Hilt
+   - MediaSessionConnection — @Singleton, injectable
+   - Все экраны используют hiltViewModel()
+   - LibraryViewModel, PlaylistsViewModel имеют QueueManager инжектированный
+   - SearchViewModel НЕ имеет QueueManager
+   - Canvas в TrackItem использует 56dp размер с RoundedCornerShape(12dp)
+   - playFraction анимируется 300ms с FastOutSlowInEasing
+   - WaveVisualizer: vsync через withFrameMillis, mutableFloatStateOf
+   - AudioEqualizer: @Singleton, 10 пресетов с 8 полосами
+   - Уведомление: onUpdateNotification, 6 actions, like через FavoritesRepository
+   - Тема: System/Light/Dark, Dynamic Colors on/off, сохранение в DataStore
+   - Ландшафт: Row с AlbumArt 40% + Controls 60%
+   - Coil: DiskCache 50MB, MemoryCache 25%
+
+## 10. ЧТО МОЖНО СДЕЛАТЬ ДАЛЬШЕ
+   - Push изменений на GitHub + релиз v2.0.0
+   - Drag-and-drop в плейлистах (библиотека reorderable или detectDragGestures)
+   - Умные плейлисты: «Часто слушаемые», «Недавно добавленные» (SQL-запросы)
+   - BeatDetector: улучшить через FFT (TarsosDSP или aubio)
+   - Android Auto поддержка
+   - Виджет «Сейчас играет»
+   - Кроссфейдер между треками (Media3 CrossfadeMediaSource)
+   - Интеграция Last.fm (скробблинг)
+   - ИИ-рекомендации (SkySoundApi / локальная модель)
+   - Unit-тесты для QueueManager, MediaSessionConnection, TrackMapper
+   - Jetpack Benchmark для WaveVisualizer
+   - Режим караоке / синхронизированные тексты
+   - Быстрые действия в уведомлении (лайк уже есть, добавить «в плейлист»)
+   - Push-уведомления о новых релизах

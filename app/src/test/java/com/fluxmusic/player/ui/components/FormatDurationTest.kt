@@ -26,8 +26,8 @@ class FormatDurationTest {
 
     @Test
     fun formatDuration_hours() {
-        assertEquals("60:00", formatDuration(3600000))
-        assertEquals("90:05", formatDuration(5405000))
+        assertEquals("1:00:00", formatDuration(3600000))
+        assertEquals("1:30:05", formatDuration(5405000))
     }
 
     @Test

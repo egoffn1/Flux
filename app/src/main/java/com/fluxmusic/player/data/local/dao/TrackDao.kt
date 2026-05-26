@@ -24,6 +24,9 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE isLocal = 1 AND duration > 0")
     fun getLocalTracks(): Flow<List<TrackEntity>>
 
+    @Query("SELECT * FROM tracks WHERE duration > 0 ORDER BY dateAdded DESC LIMIT :limit")
+    fun getRecentlyAddedTracks(limit: Int = 20): Flow<List<TrackEntity>>
+
     @Query("DELETE FROM tracks WHERE id = :trackId")
     suspend fun deleteTrackById(trackId: Long)
 

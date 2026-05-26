@@ -95,4 +95,10 @@ class PlaylistsViewModel @Inject constructor(
         if (index < 0) return
         mediaSessionConnection.playTracks(tracks, index)
     }
+
+    fun reorderTracks(playlistId: Long, fromIndex: Int, toIndex: Int) {
+        viewModelScope.launch {
+            playlistRepository.reorderTracks(playlistId, fromIndex, toIndex)
+        }
+    }
 }

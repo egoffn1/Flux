@@ -38,6 +38,8 @@ class UserPreferences @Inject constructor(
         val BASS_BOOST = floatPreferencesKey("bass_boost")
         val BALANCE_LEFT = floatPreferencesKey("balance_left")
         val BALANCE_RIGHT = floatPreferencesKey("balance_right")
+        val THEME_MODE = intPreferencesKey("theme_mode")
+        val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
     }
 
     val equalizerEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.EQUALIZER_ENABLED] ?: false }
@@ -104,6 +106,17 @@ class UserPreferences @Inject constructor(
 
     suspend fun setBassBoost(level: Float) {
         context.dataStore.edit { it[Keys.BASS_BOOST] = level.coerceIn(0f, 1f) }
+    }
+
+    val themeMode: Flow<Int> = context.dataStore.data.map { it[Keys.THEME_MODE] ?: 0 }
+    val dynamicColorEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.DYNAMIC_COLOR] ?: true }
+
+    suspend fun setThemeMode(mode: Int) {
+        context.dataStore.edit { it[Keys.THEME_MODE] = mode }
+    }
+
+    suspend fun setDynamicColorEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.DYNAMIC_COLOR] = enabled }
     }
 
     suspend fun setBalance(left: Float, right: Float) {

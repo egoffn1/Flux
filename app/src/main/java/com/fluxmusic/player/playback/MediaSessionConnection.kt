@@ -250,9 +250,7 @@ class MediaSessionConnection @Inject constructor(
         }
         if (mediaItems.isEmpty()) return
         controller.addMediaItems(mediaItems)
-        for (track in tracks) {
-            queueManager.addToQueue(track)
-        }
+        queueManager.addAllToQueue(tracks)
         Log.d("FluxMusic", "addTracksToEnd: added ${tracks.size} tracks")
     }
 

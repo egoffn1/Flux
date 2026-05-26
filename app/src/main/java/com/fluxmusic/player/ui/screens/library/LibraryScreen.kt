@@ -88,7 +88,6 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
-    onTrackClick: (Track) -> Unit = {},
     onAlbumClick: (Album) -> Unit = {},
     onArtistClick: (Artist) -> Unit = {},
     onMyWaveClick: (() -> Unit) = {},
@@ -101,6 +100,8 @@ fun LibraryScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
     val favoriteTrackIds by viewModel.favoriteTrackIds.collectAsState()
+    val recentlyAdded by viewModel.recentlyAdded.collectAsState()
+    val frequentlyPlayed by viewModel.frequentlyPlayed.collectAsState()
     val playlists by viewModel.playlists.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
@@ -317,7 +318,9 @@ fun LibraryScreen(
                                     onAddToPlaylist = { track ->
                                         selectedTrackForPlaylist = track
                                         showAddToPlaylistSheet = true
-                                    }
+                                    },
+                                    recentlyAdded = recentlyAdded,
+                                    frequentlyPlayed = frequentlyPlayed
                                 )
                                 1 -> AlbumsList(
                                     albums = albums,
@@ -443,13 +446,63 @@ private fun TracksList(
     favoriteTrackIds: Set<Long>,
     onTrackClick: (Track) -> Unit,
     onFavoriteClick: (Track) -> Unit,
-    onAddToPlaylist: (Track) -> Unit
+    onAddToPlaylist: (Track) -> Unit,
+    recentlyAdded: List<Track> = emptyList(),
+    frequentlyPlayed: List<Track> = emptyList()
 ) {
     LazyColumn(
         contentPadding = PaddingValues(vertical = 8.dp),
         modifier = Modifier.fillMaxSize(),
         state = rememberLazyListState()
     ) {
+        if (recentlyAdded.isNotEmpty()) {
+            item {
+                Text(
+                    "Recently Added",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            items(recentlyAdded.take(5), key = { "recent_${it.id}" }) { track ->
+                TrackItem(
+                    track = track,
+                    isFavorite = track.id in favoriteTrackIds,
+                    modifier = Modifier.animateItemPlacement(),
+                    onTrackClick = { onTrackClick(track) },
+                    onFavoriteClick = { onFavoriteClick(track) },
+                    onMoreClick = { onAddToPlaylist(track) },
+                )
+            }
+        }
+
+        if (frequentlyPlayed.isNotEmpty()) {
+            item {
+                Text(
+                    "Frequently Played",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            items(frequentlyPlayed.take(5), key = { "freq_${it.id}" }) { track ->
+                TrackItem(
+                    track = track,
+                    isFavorite = track.id in favoriteTrackIds,
+                    modifier = Modifier.animateItemPlacement(),
+                    onTrackClick = { onTrackClick(track) },
+                    onFavoriteClick = { onFavoriteClick(track) },
+                    onMoreClick = { onAddToPlaylist(track) },
+                )
+            }
+        }
+
+        item {
+            Text(
+                "All Tracks",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
+
         items(tracks, key = { it.id }) { track ->
             TrackItem(
                 track = track,
@@ -476,7 +529,7 @@ private fun AlbumsList(albums: List<Album>, onAlbumClick: (Album) -> Unit = {}) 
 @Composable
 private fun AlbumItem(album: Album, onClick: () -> Unit = {}, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(8.dp),
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick).padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(56.dp), tint = MaterialTheme.colorScheme.primary)

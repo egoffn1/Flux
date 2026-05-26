@@ -75,6 +75,17 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
+            SectionHeader("Theme")
+
+            ThemeSection(
+                themeMode = state.themeMode,
+                dynamicColorEnabled = state.dynamicColorEnabled,
+                onThemeModeChange = { viewModel.setThemeMode(it) },
+                onDynamicColorChange = { viewModel.setDynamicColorEnabled(it) }
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
             SectionHeader("Updates")
 
             UpdateSection(
@@ -115,10 +126,14 @@ private fun EqualizerSection(
     onPresetChange: (Int) -> Unit,
     onBassBoostChange: (Float) -> Unit
 ) {
+    val viewModel: SettingsViewModel = hiltViewModel()
+    val centerFrequencies = remember { viewModel.getCenterFrequencies() }
+    var bandLevels by remember(equalizerEnabled) { mutableStateOf(viewModel.getBandLevels().ifEmpty { List(8) { 0 } }) }
+
     SettingToggle(
         icon = Icons.Default.Tune,
         title = "Equalizer",
-        description = if (equalizerEnabled) AudioEqualizer.PRESET_NAMES[currentPreset] ?: "Normal" else "Disabled",
+        description = if (equalizerEnabled) AudioEqualizer.PRESET_NAMES[currentPreset] ?: "Manual" else "Disabled",
         checked = equalizerEnabled,
         onCheckedChange = onEqualizerToggle
     )
@@ -141,9 +156,60 @@ private fun EqualizerSection(
             AudioEqualizer.PRESET_NAMES.forEach { (preset, name) ->
                 FilterChip(
                     selected = currentPreset == preset,
-                    onClick = { onPresetChange(preset) },
+                    onClick = {
+                        onPresetChange(preset)
+                        bandLevels = viewModel.getBandLevels().ifEmpty { List(8) { 0 } }
+                    },
                     label = { Text(name) }
                 )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "Frequency Bands",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            bandLevels.forEachIndexed { index, level ->
+                val freqLabel = centerFrequencies.getOrElse(index) { 0 }.let {
+                    if (it >= 1000) "${it / 1000}k" else "$it"
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.width(40.dp)
+                ) {
+                    Text(
+                        text = "${level / 100}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Slider(
+                        value = (level.toFloat() + 1500) / 3000f,
+                        onValueChange = { fraction ->
+                            val newLevel = (fraction * 3000 - 1500).toInt()
+                            viewModel.setBandLevel(index, newLevel)
+                            bandLevels = viewModel.getBandLevels()
+                        },
+                        modifier = Modifier.height(120.dp),
+                        valueRange = 0f..1f
+                    )
+                    Text(
+                        text = freqLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 
@@ -319,6 +385,52 @@ private fun AboutSection(versionName: String) {
             context.startActivity(intent)
         }
     )
+}
+
+@Composable
+private fun ThemeSection(
+    themeMode: Int,
+    dynamicColorEnabled: Boolean,
+    onThemeModeChange: (Int) -> Unit,
+    onDynamicColorChange: (Boolean) -> Unit
+) {
+    val themeOptions = listOf(
+        0 to "System",
+        1 to "Light",
+        2 to "Dark"
+    )
+
+    SettingToggle(
+        icon = Icons.Default.Palette,
+        title = "Dynamic Colors",
+        description = if (dynamicColorEnabled) "Material You colors" else "Custom palette",
+        checked = dynamicColorEnabled,
+        onCheckedChange = onDynamicColorChange
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    Text(
+        text = "Theme Mode",
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        themeOptions.forEach { (mode, label) ->
+            FilterChip(
+                selected = themeMode == mode,
+                onClick = { onThemeModeChange(mode) },
+                label = { Text(label) }
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(8.dp))
 }
 
 @Composable

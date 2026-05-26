@@ -17,4 +17,7 @@ interface MusicRepository {
     suspend fun addLocalTrack(uri: android.net.Uri): Result<Track>
     suspend fun deleteTrack(trackId: Long)
     suspend fun ensureTrackExists(track: Track)
+    fun getRecentlyAddedTracks(limit: Int = 20): Flow<List<Track>>
+    fun getFrequentlyPlayedTracks(limit: Int = 20): Flow<List<Track>>
+    suspend fun incrementPlayCount(trackId: Long)
 }

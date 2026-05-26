@@ -1,5 +1,6 @@
 package com.fluxmusic.player.playback
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -22,8 +23,13 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.fluxmusic.player.MainActivity
 import com.fluxmusic.player.domain.model.Track
+import com.fluxmusic.player.domain.repository.FavoritesRepository
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -36,12 +42,22 @@ class MusicService : MediaSessionService() {
     @Inject
     lateinit var audioEqualizer: AudioEqualizer
 
+    @Inject
+    lateinit var favoritesRepository: FavoritesRepository
+
+    @Inject
+    lateinit var musicRepository: com.fluxmusic.player.domain.repository.MusicRepository
+
     private val beatDetector = BeatDetector()
 
     private var mediaSession: MediaSession? = null
     private var player: ExoPlayer? = null
-    private var currentAlbumArt: Bitmap? = null
+    private var cachedAlbumArt: Bitmap? = null
+    private var cachedTrackId: Long? = null
+    private var isFavorite = false
     private lateinit var notificationManager: NotificationManager
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private lateinit var contentIntent: PendingIntent
 
     companion object {
         const val CHANNEL_ID = "flux_music_channel"
@@ -50,6 +66,9 @@ class MusicService : MediaSessionService() {
         const val ACTION_PAUSE = "com.fluxmusic.player.ACTION_PAUSE"
         const val ACTION_NEXT = "com.fluxmusic.player.ACTION_NEXT"
         const val ACTION_PREVIOUS = "com.fluxmusic.player.ACTION_PREVIOUS"
+        const val ACTION_REWIND = "com.fluxmusic.player.ACTION_REWIND"
+        const val ACTION_FORWARD = "com.fluxmusic.player.ACTION_FORWARD"
+        const val ACTION_LIKE = "com.fluxmusic.player.ACTION_LIKE"
         private const val TAG = "FluxMusic"
     }
 
@@ -59,27 +78,25 @@ class MusicService : MediaSessionService() {
         notificationManager = getSystemService(NotificationManager::class.java)
         createNotificationChannel()
 
+        contentIntent = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         val newPlayer = ExoPlayer.Builder(this)
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                     .setUsage(C.USAGE_MEDIA)
-                    .build(),
-                true
+                    .build(), true
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
         player = newPlayer
 
-        val sessionActivityPendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
         mediaSession = MediaSession.Builder(this, newPlayer)
-            .setSessionActivity(sessionActivityPendingIntent)
+            .setSessionActivity(contentIntent)
             .setCallback(MediaSessionCallback())
             .build()
 
@@ -90,6 +107,14 @@ class MusicService : MediaSessionService() {
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 updateNotification()
+                loadCurrentAlbumArt()
+                checkFavoriteStatus()
+                val track = queueManager.currentTrack.value
+                if (track != null) {
+                    serviceScope.launch {
+                        musicRepository.incrementPlayCount(track.id)
+                    }
+                }
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -108,6 +133,94 @@ class MusicService : MediaSessionService() {
         })
     }
 
+    private fun updateNotification() {
+        mediaSession?.let { session ->
+            try {
+                startForeground(NOTIFICATION_ID, buildNotification(session.player))
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to update notification", e)
+            }
+        }
+    }
+
+    private fun buildNotification(player: Player): Notification {
+        val currentTrack = queueManager.currentTrack.value
+
+        val playPauseAction = if (player.isPlaying) {
+            NotificationCompat.Action(
+                android.R.drawable.ic_media_pause,
+                "Pause",
+                createPendingIntent(ACTION_PAUSE)
+            )
+        } else {
+            NotificationCompat.Action(
+                android.R.drawable.ic_media_play,
+                "Play",
+                createPendingIntent(ACTION_PLAY)
+            )
+        }
+
+        val likeIcon = if (isFavorite) {
+            android.R.drawable.btn_star_big_on
+        } else {
+            android.R.drawable.btn_star_big_off
+        }
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setContentTitle(currentTrack?.title ?: "Flux")
+            .setContentText(currentTrack?.artist ?: "")
+            .setSubText(currentTrack?.album)
+            .setLargeIcon(cachedAlbumArt)
+            .setContentIntent(contentIntent)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOnlyAlertOnce(true)
+            .setStyle(
+                androidx.media.app.NotificationCompat.MediaStyle()
+                    .setMediaSession(mediaSession?.sessionCompatToken)
+                    .setShowActionsInCompactView(0, 1, 2)
+            )
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+            .addAction(
+                NotificationCompat.Action(
+                    android.R.drawable.ic_media_previous,
+                    "Previous",
+                    createPendingIntent(ACTION_PREVIOUS)
+                )
+            )
+            .addAction(playPauseAction)
+            .addAction(
+                NotificationCompat.Action(
+                    android.R.drawable.ic_media_next,
+                    "Next",
+                    createPendingIntent(ACTION_NEXT)
+                )
+            )
+            .addAction(
+                NotificationCompat.Action(
+                    android.R.drawable.ic_media_previous,
+                    "-10s",
+                    createPendingIntent(ACTION_REWIND)
+                )
+            )
+            .addAction(
+                NotificationCompat.Action(
+                    android.R.drawable.ic_media_next,
+                    "+10s",
+                    createPendingIntent(ACTION_FORWARD)
+                )
+            )
+            .addAction(
+                NotificationCompat.Action(
+                    likeIcon,
+                    if (isFavorite) "Remove from favorites" else "Add to favorites",
+                    createPendingIntent(ACTION_LIKE)
+                )
+            )
+            .build()
+    }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -115,79 +228,41 @@ class MusicService : MediaSessionService() {
                 "Flux Music Player",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Управление воспроизведением музыки"
+                description = "Music playback controls"
                 setShowBadge(false)
             }
             notificationManager.createNotificationChannel(channel)
         }
     }
 
-    private fun updateNotification() {
-        val player = player ?: return
-        val currentTrack = queueManager.currentTrack.value ?: return
-
-        currentAlbumArt = loadAlbumArt(currentTrack.albumArtUri)
-
-        val contentIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        val playPauseAction = if (player.isPlaying) {
-            NotificationCompat.Action(
-                android.R.drawable.ic_media_pause,
-                "Пауза",
-                createPendingIntent(ACTION_PAUSE)
-            )
-        } else {
-            NotificationCompat.Action(
-                android.R.drawable.ic_media_play,
-                "Воспроизвести",
-                createPendingIntent(ACTION_PLAY)
-            )
+    private fun loadCurrentAlbumArt() {
+        val track = queueManager.currentTrack.value ?: return
+        if (track.id == cachedTrackId) return
+        serviceScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                loadAlbumArt(track.albumArtUri)
+            }
+            cachedAlbumArt = bitmap
+            cachedTrackId = track.id
+            mediaSession?.let { session ->
+                try {
+                    startForeground(NOTIFICATION_ID, buildNotification(session.player))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to update notification with album art", e)
+                }
+            }
         }
+    }
 
-        val prevAction = NotificationCompat.Action(
-            android.R.drawable.ic_media_previous,
-            "Предыдущий",
-            createPendingIntent(ACTION_PREVIOUS)
-        )
-
-        val nextAction = NotificationCompat.Action(
-            android.R.drawable.ic_media_next,
-            "Следующий",
-            createPendingIntent(ACTION_NEXT)
-        )
-
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentTitle(currentTrack.title)
-            .setContentText(currentTrack.artist)
-            .setContentIntent(contentIntent)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setOnlyAlertOnce(true)
-            .addAction(prevAction)
-            .addAction(playPauseAction)
-            .addAction(nextAction)
-            .setStyle(
-                androidx.media.app.NotificationCompat.MediaStyle()
-                    .setShowActionsInCompactView(0, 1, 2)
-            )
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
-
-        currentAlbumArt?.let {
-            builder.setLargeIcon(it)
-        }
-
-        val notification = builder.build()
-
-        try {
-            notificationManager.notify(NOTIFICATION_ID, notification)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to show notification", e)
+    private fun checkFavoriteStatus() {
+        val trackId = queueManager.currentTrack.value?.id ?: return
+        serviceScope.launch {
+            try {
+                isFavorite = favoritesRepository.isFavorite(trackId)
+                mediaSession?.let { session ->
+                    startForeground(NOTIFICATION_ID, buildNotification(session.player))
+                }
+            } catch (_: Exception) { }
         }
     }
 
@@ -226,6 +301,21 @@ class MusicService : MediaSessionService() {
             ACTION_PAUSE -> player?.pause()
             ACTION_NEXT -> player?.seekToNextMediaItem()
             ACTION_PREVIOUS -> player?.seekToPreviousMediaItem()
+            ACTION_REWIND -> player?.let { it.seekTo((it.currentPosition - 10_000).coerceAtLeast(0)) }
+            ACTION_FORWARD -> player?.let { it.seekTo(it.currentPosition + 10_000) }
+            ACTION_LIKE -> {
+                queueManager.currentTrack.value?.let { track ->
+                    serviceScope.launch {
+                        try {
+                            favoritesRepository.toggleFavorite(track.id)
+                            isFavorite = favoritesRepository.isFavorite(track.id)
+                            mediaSession?.let { session ->
+                                startForeground(NOTIFICATION_ID, buildNotification(session.player))
+                            }
+                        } catch (_: Exception) { }
+                    }
+                }
+            }
         }
         return START_NOT_STICKY
     }
@@ -243,6 +333,7 @@ class MusicService : MediaSessionService() {
 
     override fun onDestroy() {
         beatDetector.release()
+        serviceScope.coroutineContext.cancelChildren()
         mediaSession?.run {
             player.release()
             release()

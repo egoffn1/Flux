@@ -120,14 +120,6 @@ class BeatDetector {
 
                     val intensity = ((instantEnergy / avgEnergy - 1.2f) * 2f).coerceIn(0f, 1f)
                     BeatState.updateBeat(intensity)
-
-                    handler.postDelayed({
-                        if (BeatState.beatIntensity.value > 0.1f) {
-                            BeatState.updateBeat(BeatState.beatIntensity.value * 0.6f)
-                        } else {
-                            BeatState.reset()
-                        }
-                    }, 150)
                 }
             }
         }

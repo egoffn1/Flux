@@ -13,4 +13,8 @@ data class PlaybackState(
     val duration: Long,
     val shuffleEnabled: Boolean,
     val repeatMode: RepeatMode
-)
+) {
+    companion object {
+        val EMPTY = PlaybackState(null, false, 0L, 0L, false, RepeatMode.OFF)
+    }
+}

@@ -25,6 +25,8 @@ data class SettingsState(
     val waveSpeed: Int = 1000,
     val autoUpdateEnabled: Boolean = true,
     val bassBoost: Float = 0.5f,
+    val themeMode: Int = 0,
+    val dynamicColorEnabled: Boolean = true,
     val currentVersion: String = "",
     val isCheckingUpdate: Boolean = false,
     val updateStatus: String? = null
@@ -48,43 +50,35 @@ class SettingsViewModel @Inject constructor(
         _state.update { it.copy(currentVersion = versionName) }
 
         viewModelScope.launch {
-            userPreferences.equalizerEnabled.collect { v ->
-                _state.update { it.copy(equalizerEnabled = v) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.equalizerPreset.collect { v ->
-                _state.update { it.copy(equalizerPreset = v) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.waveEnabled.collect { v ->
-                _state.update { it.copy(waveEnabled = v) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.waveType.collect { v ->
-                _state.update { it.copy(waveType = v) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.waveBarCount.collect { v ->
-                _state.update { it.copy(waveBarCount = v) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.waveSpeed.collect { v ->
-                _state.update { it.copy(waveSpeed = v) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.autoUpdateEnabled.collect { v ->
-                _state.update { it.copy(autoUpdateEnabled = v) }
-            }
-        }
-        viewModelScope.launch {
-            userPreferences.bassBoost.collect { v ->
-                _state.update { it.copy(bassBoost = v) }
+            kotlinx.coroutines.flow.combine(
+                listOf(
+                    userPreferences.equalizerEnabled,
+                    userPreferences.equalizerPreset,
+                    userPreferences.waveEnabled,
+                    userPreferences.waveType,
+                    userPreferences.waveBarCount,
+                    userPreferences.waveSpeed,
+                    userPreferences.autoUpdateEnabled,
+                    userPreferences.bassBoost,
+                    userPreferences.themeMode,
+                    userPreferences.dynamicColorEnabled
+                )
+            ) { values ->
+                SettingsState(
+                    equalizerEnabled = values[0] as Boolean,
+                    equalizerPreset = values[1] as Int,
+                    waveEnabled = values[2] as Boolean,
+                    waveType = values[3] as Int,
+                    waveBarCount = values[4] as Int,
+                    waveSpeed = values[5] as Int,
+                    autoUpdateEnabled = values[6] as Boolean,
+                    bassBoost = values[7] as Float,
+                    themeMode = values[8] as Int,
+                    dynamicColorEnabled = values[9] as Boolean,
+                    currentVersion = versionName
+                )
+            }.collect { newState ->
+                _state.value = newState
             }
         }
     }
@@ -127,6 +121,18 @@ class SettingsViewModel @Inject constructor(
             userPreferences.setBassBoost(level)
             audioEqualizer.setBassBoost(level)
         }
+    }
+
+    fun getBandLevels(): List<Int> = audioEqualizer.getBandLevels()
+    fun getCenterFrequencies(): List<Int> = audioEqualizer.getCenterFrequencies()
+    fun setBandLevel(band: Int, level: Int) = audioEqualizer.setBandLevel(band, level)
+
+    fun setThemeMode(mode: Int) {
+        viewModelScope.launch { userPreferences.setThemeMode(mode) }
+    }
+
+    fun setDynamicColorEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPreferences.setDynamicColorEnabled(enabled) }
     }
 
     fun checkForUpdate() {

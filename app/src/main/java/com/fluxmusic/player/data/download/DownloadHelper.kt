@@ -68,7 +68,7 @@ class DownloadHelper @Inject constructor(
             context.contentResolver.update(uri, values, null, null)
 
             val track = TrackEntity(
-                id = System.currentTimeMillis(),
+                id = -(System.currentTimeMillis() and 0x7FFFFFFFFFFFFFFF),
                 title = title,
                 artist = artist,
                 album = "Flux Downloads",
@@ -106,7 +106,7 @@ class DownloadHelper @Inject constructor(
         }
 
         val track = TrackEntity(
-            id = System.currentTimeMillis(),
+            id = -(System.currentTimeMillis() and 0x7FFFFFFFFFFFFFFF),
             title = title,
             artist = artist,
             album = "Flux Downloads",

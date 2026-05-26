@@ -58,12 +58,22 @@ private val DarkColorScheme = darkColorScheme(
     onError = Color(0xFF601410)
 )
 
+const val THEME_MODE_SYSTEM = 0
+const val THEME_MODE_LIGHT = 1
+const val THEME_MODE_DARK = 2
+
 @Composable
 fun FluxTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: Int = THEME_MODE_SYSTEM,
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    val darkTheme = when (themeMode) {
+        THEME_MODE_LIGHT -> false
+        THEME_MODE_DARK -> true
+        else -> isSystemInDarkTheme()
+    }
+
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current

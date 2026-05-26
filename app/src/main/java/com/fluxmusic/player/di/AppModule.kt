@@ -8,7 +8,9 @@ import com.fluxmusic.player.data.local.MIGRATION_1_2
 import com.fluxmusic.player.data.local.MIGRATION_2_3
 import com.fluxmusic.player.data.local.MIGRATION_3_4
 import com.fluxmusic.player.data.local.MIGRATION_4_5
+import com.fluxmusic.player.data.local.MIGRATION_5_6
 import com.fluxmusic.player.data.local.dao.FavoriteDao
+import com.fluxmusic.player.data.local.dao.PlayCountDao
 import com.fluxmusic.player.data.local.dao.PlaylistDao
 import com.fluxmusic.player.data.local.dao.TrackDao
 import com.fluxmusic.player.data.repository.FavoritesRepositoryImpl
@@ -36,7 +38,7 @@ object DatabaseModule {
             context,
             FluxDatabase::class.java,
             "flux_database"
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).fallbackToDestructiveMigration().build()
     }
 
     @Provides
@@ -50,6 +52,10 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideFavoriteDao(database: FluxDatabase): FavoriteDao = database.favoriteDao()
+
+    @Provides
+    @Singleton
+    fun providePlayCountDao(database: FluxDatabase): PlayCountDao = database.playCountDao()
 }
 
 @Module

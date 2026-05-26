@@ -3,6 +3,7 @@ package com.fluxmusic.player.data.local.entity
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
+import com.fluxmusic.player.data.local.entity.TrackEntity
 
 @Entity(
     tableName = "playlist_tracks",
@@ -12,6 +13,12 @@ import androidx.room.Index
             entity = PlaylistEntity::class,
             parentColumns = ["id"],
             childColumns = ["playlistId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TrackEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["trackId"],
             onDelete = ForeignKey.CASCADE
         )
     ],

@@ -1,11 +1,16 @@
 package com.fluxmusic.player.data.repository
 
 import android.net.Uri
+import com.fluxmusic.player.data.local.dao.PlayCountDao
 import com.fluxmusic.player.data.local.dao.TrackDao
+import com.fluxmusic.player.data.local.entity.PlayCountEntity
 import com.fluxmusic.player.data.local.mappers.toDomain
 import com.fluxmusic.player.data.local.mappers.toEntity
 import com.fluxmusic.player.data.scanner.LocalTrackScanner
 import com.fluxmusic.player.data.scanner.MediaScanner
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 import com.fluxmusic.player.domain.model.Album
 import com.fluxmusic.player.domain.model.Artist
 import com.fluxmusic.player.domain.model.Track
@@ -19,7 +24,8 @@ import javax.inject.Singleton
 class MusicRepositoryImpl @Inject constructor(
     private val trackDao: TrackDao,
     private val mediaScanner: MediaScanner,
-    private val localTrackScanner: LocalTrackScanner
+    private val localTrackScanner: LocalTrackScanner,
+    private val playCountDao: PlayCountDao
 ) : MusicRepository {
 
     override fun getAllTracks(): Flow<List<Track>> =
@@ -47,11 +53,10 @@ class MusicRepositoryImpl @Inject constructor(
     override fun getAllArtists(): Flow<List<Artist>> =
         trackDao.getAllTracks().map { entities ->
             entities.groupBy { it.artist }
-                .map { (_, tracks) ->
-                    val first = tracks.first()
+                .map { (artistName, tracks) ->
                     Artist(
-                        id = first.id,
-                        name = first.artist,
+                        id = artistName.hashCode().toLong().let { if (it == 0L) -1L else it },
+                        name = artistName,
                         trackCount = tracks.size,
                         albumCount = tracks.map { it.albumId }.distinct().size
                     )
@@ -88,6 +93,27 @@ class MusicRepositoryImpl @Inject constructor(
     override suspend fun deleteTrack(trackId: Long) {
         trackDao.deleteTrackById(trackId)
     }
+
+    override fun getFrequentlyPlayedTracks(limit: Int): Flow<List<Track>> =
+        playCountDao.getMostPlayed(limit).map { counts ->
+            counts.mapNotNull { count ->
+                runBlocking(Dispatchers.IO) { trackDao.getTrackById(count.trackId) }?.toDomain()
+            }
+        }
+
+    override suspend fun incrementPlayCount(trackId: Long) {
+        val existing = playCountDao.getPlayCount(trackId)
+        if (existing != null) {
+            playCountDao.increment(trackId)
+        } else {
+            playCountDao.upsert(PlayCountEntity(trackId = trackId, count = 1, lastPlayedAt = System.currentTimeMillis()))
+        }
+    }
+
+    override fun getRecentlyAddedTracks(limit: Int): Flow<List<Track>> =
+        trackDao.getRecentlyAddedTracks(limit).map { entities ->
+            entities.map { it.toDomain() }
+        }
 
     override suspend fun ensureTrackExists(track: Track) {
         val existing = trackDao.getTrackById(track.id)

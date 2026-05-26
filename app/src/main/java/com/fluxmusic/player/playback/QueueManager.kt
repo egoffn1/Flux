@@ -41,6 +41,10 @@ class QueueManager @Inject constructor() {
         _queue.value = _queue.value + track
     }
 
+    fun addAllToQueue(tracks: List<Track>) {
+        _queue.value = _queue.value + tracks
+    }
+
     fun removeFromQueue(index: Int) {
         if (index < 0 || index >= _queue.value.size) return
         val newList = _queue.value.toMutableList().apply { removeAt(index) }

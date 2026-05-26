@@ -63,6 +63,12 @@ class LibraryViewModel @Inject constructor(
     val playlists: StateFlow<List<Playlist>> = playlistRepository.getAllPlaylists()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val recentlyAdded: StateFlow<List<Track>> = musicRepository.getRecentlyAddedTracks(20)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val frequentlyPlayed: StateFlow<List<Track>> = musicRepository.getFrequentlyPlayedTracks(20)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 

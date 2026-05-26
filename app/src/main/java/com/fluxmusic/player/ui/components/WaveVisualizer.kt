@@ -1,19 +1,19 @@
 package com.fluxmusic.player.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.isActive
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -35,6 +36,9 @@ enum class WaveType(val label: String) {
     CIRCULAR("Circular"),
     GRADIENT_BARS("Gradient Bars")
 }
+
+val LocalWaveType = staticCompositionLocalOf { WaveType.BARS }
+val LocalPlayingTrackId = staticCompositionLocalOf<Long?> { null }
 
 @Composable
 fun WaveVisualizer(
@@ -47,37 +51,33 @@ fun WaveVisualizer(
     amplitudeMultiplier: Float = 1f,
     height: Dp = 48.dp
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "wave")
-    val phase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 2f * PI.toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(animationSpeed, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "phase"
-    )
+    val phase = remember { mutableFloatStateOf(0f) }
+    val smoothPhase = remember { mutableFloatStateOf(0f) }
 
-    val smoothPhase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 2f * PI.toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween((animationSpeed * 1.5f).toInt(), easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "smoothPhase"
-    )
+    LaunchedEffect(animationSpeed) {
+        var lastFrameTime = 0L
+        while (isActive) {
+            withFrameMillis { frameTimeMillis ->
+                if (lastFrameTime == 0L) lastFrameTime = frameTimeMillis - 16L
+                val delta = (frameTimeMillis - lastFrameTime).coerceAtMost(50L)
+                lastFrameTime = frameTimeMillis
+                val twoPi = 2f * PI.toFloat()
+                phase.floatValue = (phase.floatValue + delta * twoPi / animationSpeed) % twoPi
+                val smoothSpeed = (animationSpeed * 1.5f).toInt()
+                smoothPhase.floatValue = (smoothPhase.floatValue + delta * twoPi / smoothSpeed) % twoPi
+            }
+        }
+    }
 
     val playFraction by animateFloatAsState(
         targetValue = if (isPlaying) 1f else 0f,
-        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
         label = "playFraction"
     )
 
     val alpha = 0.06f + playFraction * 0.94f
-    val ampMul = (0.03f + playFraction * 0.97f) * amplitudeMultiplier
 
-    val amplitudes = remember { FloatArray(barCount) }
+    val amplitudes = remember(barCount) { FloatArray(barCount) }
 
     Canvas(modifier = modifier.fillMaxWidth().height(height)) {
         val barWidth = size.width / barCount
@@ -85,8 +85,8 @@ fun WaveVisualizer(
 
         for (i in 0 until barCount) {
             val normalizedI = i.toFloat() / barCount
-            val rawAmp = sin(normalizedI * PI.toFloat() * 4 + phase)
-            val smooth = (sin(smoothPhase * 0.5f) + 1f) / 2f
+            val rawAmp = sin(normalizedI * PI.toFloat() * 4 + phase.floatValue)
+            val smooth = (sin(smoothPhase.floatValue * 0.5f) + 1f) / 2f
 
             val dancingAmp = ((rawAmp + 1f) / 2f * 0.7f + 0.15f + smooth * 0.15f)
             val sleepingAmp = 0.08f + normalizedI * 0.03f

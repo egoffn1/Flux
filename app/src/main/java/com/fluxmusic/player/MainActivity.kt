@@ -31,6 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -60,6 +61,8 @@ import com.fluxmusic.player.playback.QueueManager
 import com.fluxmusic.player.playback.SleepTimer
 import com.fluxmusic.player.playback.WaveRecommendationManager
 import com.fluxmusic.player.ui.components.MiniPlayer
+import com.fluxmusic.player.ui.components.LocalPlayingTrackId
+import com.fluxmusic.player.ui.components.LocalWaveType
 import com.fluxmusic.player.ui.components.WaveType
 import com.fluxmusic.player.ui.navigation.Screen
 import com.fluxmusic.player.ui.screens.library.LibraryScreen
@@ -113,7 +116,12 @@ class MainActivity : ComponentActivity() {
         requestAudioPermission()
 
         setContent {
-            FluxTheme {
+            val themeMode by userPreferences.themeMode.collectAsState(initial = 0)
+            val dynamicColor by userPreferences.dynamicColorEnabled.collectAsState(initial = true)
+            FluxTheme(
+                themeMode = themeMode,
+                dynamicColor = dynamicColor
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -174,8 +182,15 @@ fun MainScreen(
     val waveBarCount by userPreferences.waveBarCount.collectAsState(initial = 28)
     val waveSpeed by userPreferences.waveSpeed.collectAsState(initial = 1000)
     val sleepTimerActive = sleepTimer.isActive
-    val sleepTimerRemaining = if (sleepTimerActive) sleepTimer.remainingFormatted else ""
     val sleepTimerMinutes by userPreferences.sleepTimerMinutes.collectAsState(initial = 15)
+
+    val currentWaveType = when (waveTypePref) {
+        0 -> WaveType.BARS
+        1 -> WaveType.SINE
+        2 -> WaveType.CIRCULAR
+        3 -> WaveType.GRADIENT_BARS
+        else -> WaveType.BARS
+    }
 
     val track by queueManager.currentTrack.collectAsState()
     val isMyWaveActive by waveRecommendationManager.isMyWaveActive.collectAsState()
@@ -269,6 +284,11 @@ fun MainScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
+            val playingTrackId = if (isPlaying && track != null) track!!.id else null
+            CompositionLocalProvider(
+                LocalWaveType provides currentWaveType,
+                LocalPlayingTrackId provides playingTrackId
+            ) {
             NavHost(
                 navController = navController,
                 startDestination = Screen.Library.route,
@@ -304,7 +324,6 @@ fun MainScreen(
                 ) {
                     val libraryViewModel: com.fluxmusic.player.ui.screens.library.LibraryViewModel = hiltViewModel()
                     LibraryScreen(
-                        onTrackClick = { },
                         onAlbumClick = { album ->
                             navController.navigate(Screen.AlbumDetail.createRoute(album.id))
                         },
@@ -476,7 +495,6 @@ fun MainScreen(
                         isMyWaveActive = isMyWaveActive,
                         beatIntensity = beatIntensity,
                         sleepTimerActive = sleepTimerActive,
-                        sleepTimerRemaining = sleepTimerRemaining,
                         onSleepTimerClick = {
                             if (sleepTimerActive) {
                                 sleepTimer.stop()
@@ -489,6 +507,7 @@ fun MainScreen(
                         }
                     )
                 }
+            }
             }
         }
     }

@@ -118,17 +118,16 @@ fun MiniPlayer(
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (track != null) {
+                        if (track != null && track.albumArtUri != null) {
                             AsyncImage(
-                                model = track.albumArtUri ?: track.uri,
+                                model = track.albumArtUri,
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(48.dp)
                                     .clip(RoundedCornerShape(8.dp)),
                                 contentScale = ContentScale.Crop
                             )
-                        }
-                        if (track?.albumArtUri == null) {
+                        } else {
                             Icon(
                                 imageVector = Icons.Default.MusicNote,
                                 contentDescription = null,

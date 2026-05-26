@@ -1,5 +1,6 @@
 package com.fluxmusic.player.ui.screens.nowplaying
 
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,7 +41,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Explore
@@ -68,6 +70,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
@@ -107,7 +110,6 @@ fun NowPlayingScreen(
     onShuffleClick: () -> Unit,
     onRepeatClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onAddToPlaylist: (() -> Unit)? = null,
     onPlaySimilarClick: (() -> Unit)? = null,
     waveEnabled: Boolean = true,
     waveType: WaveType = WaveType.BARS,
@@ -116,7 +118,6 @@ fun NowPlayingScreen(
     isMyWaveActive: Boolean = false,
     beatIntensity: Float = 0f,
     sleepTimerActive: Boolean = false,
-    sleepTimerRemaining: String = "",
     onSleepTimerClick: (() -> Unit)? = null
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -176,12 +177,6 @@ fun NowPlayingScreen(
         label = "favoriteColor"
     )
 
-    val albumBorderColor by animateColorAsState(
-        targetValue = if (isMyWaveActive) primaryColor.copy(alpha = 0.6f) else Color.Transparent,
-        animationSpec = tween(500),
-        label = "albumBorder"
-    )
-
     val playRotation by animateFloatAsState(
         targetValue = if (isPlaying) 90f else 0f,
         animationSpec = spring(dampingRatio = 0.5f, stiffness = 300f),
@@ -235,27 +230,26 @@ fun NowPlayingScreen(
         },
         containerColor = backgroundColor
     ) { padding ->
-        Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
+        val configuration = LocalConfiguration.current
+        val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val baseModifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .padding(horizontal = 24.dp)
 
-            // Album art with wave visualizer background
+        // Album art section (shared between orientations)
+        @Composable
+        fun AlbumArtSection(modifier: Modifier = Modifier) {
             Box(
-                modifier = Modifier
+                modifier = modifier
                     .scale(albumScale)
                     .aspectRatio(1f)
-                    .fillMaxWidth(0.85f)
+                    .fillMaxWidth(0.95f)
                     .clip(RoundedCornerShape(20.dp))
                     .background(surfaceColor)
                     .then(
                         if (isMyWaveActive) Modifier.background(
-                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                            brush = Brush.horizontalGradient(
                                 colors = listOf(
                                     primaryColor.copy(alpha = 0.3f),
                                     primaryColor.copy(alpha = 0.1f),
@@ -267,7 +261,6 @@ fun NowPlayingScreen(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                // Ambient atmospheric waves synced to beat
                 AmbientWaveBackground(
                     waveType = when (waveType) {
                         WaveType.BARS -> "Bars"
@@ -275,22 +268,17 @@ fun NowPlayingScreen(
                         WaveType.CIRCULAR -> "Circular"
                         WaveType.GRADIENT_BARS -> "Gradient"
                     },
-                    color = primaryColor,
-                    beatIntensity = beatIntensity,
+                    color = primaryColor, beatIntensity = beatIntensity,
                     playFraction = if (isPlaying || isMyWaveActive) 1f else 0f,
-                    barCount = waveBarCount,
-                    speed = waveSpeed
+                    barCount = waveBarCount, speed = waveSpeed
                 )
                 if (waveEnabled) {
                     WaveVisualizer(
-                        isPlaying = isPlaying || isMyWaveActive,
-                        waveType = waveType,
+                        isPlaying = isPlaying || isMyWaveActive, waveType = waveType,
                         color = if (isMyWaveActive) primaryColor.copy(alpha = 0.3f) else primaryColor.copy(alpha = 0.15f),
-                        barCount = waveBarCount,
-                        animationSpeed = waveSpeed,
+                        barCount = waveBarCount, animationSpeed = waveSpeed,
                         amplitudeMultiplier = if (isMyWaveActive) 1.2f else 1f,
-                        height = 200.dp,
-                        modifier = Modifier.fillMaxSize()
+                        height = 200.dp, modifier = Modifier.fillMaxSize()
                     )
                 }
                 if (track != null) {
@@ -299,14 +287,11 @@ fun NowPlayingScreen(
                         transitionSpec = {
                             fadeIn(tween(300)) + slideInVertically { it / 4 } togetherWith
                             fadeOut(tween(200)) + slideOutVertically { -it / 4 }
-                        },
-                        label = "albumArtTransition"
+                        }, label = "albumArtTransition"
                     ) { _ ->
                         AsyncImage(
-                            model = track.albumArtUri ?: track.uri,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                            model = track.albumArtUri, contentDescription = null,
+                            modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop
                         )
                     }
                 } else {
@@ -314,224 +299,123 @@ fun NowPlayingScreen(
                     val iconGlow = primaryColor.copy(
                         alpha = (0.08f + 0.2f * (kotlin.math.sin(iconGlowPhase + kotlin.math.PI.toFloat()) + 1f) / 2f) * iconPlayFraction
                     )
-                    val isActive = isPlaying || isMyWaveActive
-
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .scale(if (isActive) iconPulse else 1f),
+                        modifier = Modifier.fillMaxSize().scale(if (isPlaying || isMyWaveActive) iconPulse else 1f),
                         contentAlignment = Alignment.Center
                     ) {
+                        val isActive = isPlaying || isMyWaveActive
                         Canvas(modifier = Modifier.fillMaxSize(0.85f)) {
-                            val cx = size.width / 2f
-                            val cy = size.height / 2f
+                            val cx = size.width / 2f; val cy = size.height / 2f
                             val glowR = minOf(cx, cy) * (0.5f + 0.3f * iconPlayFraction)
                             drawCircle(
-                                brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                    colors = listOf(iconGlow, iconGlow.copy(alpha = 0f)),
-                                    radius = glowR
-                                ),
-                                radius = glowR,
-                                center = Offset(cx, cy)
+                                brush = Brush.radialGradient(colors = listOf(iconGlow, iconGlow.copy(alpha = 0f)), radius = glowR),
+                                radius = glowR, center = Offset(cx, cy)
                             )
                         }
                         if (waveEnabled && isActive) {
                             WaveVisualizer(
-                                isPlaying = true,
-                                waveType = waveType,
+                                isPlaying = true, waveType = waveType,
                                 color = primaryColor.copy(alpha = 0.12f),
-                                barCount = waveBarCount.coerceIn(8, 32),
-                                animationSpeed = waveSpeed,
-                                amplitudeMultiplier = 0.4f,
-                                height = 160.dp,
-                                modifier = Modifier.fillMaxSize()
+                                barCount = waveBarCount.coerceIn(8, 32), animationSpeed = waveSpeed,
+                                amplitudeMultiplier = 0.4f, height = 160.dp, modifier = Modifier.fillMaxSize()
                             )
                         }
-                        Text(
-                            text = "\u266B",
-                            style = MaterialTheme.typography.displayLarge,
-                            color = primaryColor.copy(
-                                alpha = (0.3f + 0.7f * iconPlayFraction).coerceIn(0.3f, 1f)
-                            ),
-                            modifier = Modifier.scale(0.7f + 0.3f * iconPlayFraction)
-                        )
+                        Text("\u266B", style = MaterialTheme.typography.displayLarge,
+                            color = primaryColor.copy(alpha = (0.3f + 0.7f * iconPlayFraction).coerceIn(0.3f, 1f)),
+                            modifier = Modifier.scale(0.7f + 0.3f * iconPlayFraction))
                     }
                 }
             }
+        }
 
-            // Track info
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
+        @Composable
+        fun ControlsSection(modifier: Modifier = Modifier, verticalArrangement: Arrangement.Vertical = Arrangement.Top) {
+            Column(modifier = modifier, verticalArrangement = verticalArrangement, horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
                         AnimatedContent(
                             targetState = track?.id ?: -1L,
                             transitionSpec = {
                                 fadeIn(tween(250)) + slideInVertically { it / 6 } togetherWith
                                 fadeOut(tween(150)) + slideOutVertically { -it / 6 }
-                            },
-                            label = "trackInfoTransition"
+                            }, label = "trackInfoTransition"
                         ) { _ ->
                             Column {
-                                Text(
-                                    text = track?.title ?: "No track",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = onSurfaceColor
-                                )
-                                Text(
-                                    text = track?.artist ?: "",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                Text(track?.title ?: "No track", style = MaterialTheme.typography.headlineSmall,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis, color = onSurfaceColor)
+                                Text(track?.artist ?: "", style = MaterialTheme.typography.bodyMedium,
+                                    color = onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }
                     }
                     IconButton(onClick = onFavoriteClick) {
-                        Icon(
-                            imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                            contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                            tint = favoriteTint
-                        )
+                        Icon(if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            if (isFavorite) "Remove from favorites" else "Add to favorites", tint = favoriteTint)
                     }
                     IconButton(onClick = { showPlaylistSheet = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.PlaylistAdd,
-                            contentDescription = "Add to playlist",
-                            tint = onSurfaceVariant
-                        )
+                        Icon(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to playlist", tint = onSurfaceVariant)
                     }
                 }
+                Spacer(Modifier.height(if (isLandscape) 8.dp else 12.dp))
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Wave progress bar (slider + wave animation)
                 WaveProgressBar(
                     value = displayProgress,
-                    onValueChange = { value ->
-                        if (!isDragging) isDragging = true
-                        sliderPosition = value
-                    },
-                    onValueChangeFinished = {
-                        isDragging = false
-                        onSeek((sliderPosition * duration).toLong())
-                    },
-                    isPlaying = isPlaying,
-                    waveColor = primaryColor,
+                    onValueChange = { if (!isDragging) isDragging = true; sliderPosition = it },
+                    onValueChangeFinished = { isDragging = false; onSeek((sliderPosition * duration).toLong()) },
+                    isPlaying = isPlaying, waveColor = primaryColor,
                     inactiveColor = onSurfaceVariant.copy(alpha = 0.25f),
-                    barCount = waveBarCount,
-                    animationSpeed = waveSpeed,
-                    currentTimeText = formatDuration(
-                        if (isDragging) (sliderPosition * duration).toLong()
-                        else currentPosition
-                    ),
+                    barCount = waveBarCount, animationSpeed = waveSpeed,
+                    currentTimeText = formatDuration(if (isDragging) (sliderPosition * duration).toLong() else currentPosition),
                     totalTimeText = formatDuration(duration),
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
+                Spacer(Modifier.height(if (isLandscape) 8.dp else 12.dp))
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Controls
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onShuffleClick) {
-                        Icon(
-                            imageVector = Icons.Default.Shuffle,
-                            contentDescription = "Shuffle",
-                            tint = if (shuffleEnabled) primaryColor else onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Icon(Icons.Default.Shuffle, "Shuffle", tint = if (shuffleEnabled) primaryColor else onSurfaceVariant, modifier = Modifier.size(24.dp))
                     }
-                    IconButton(
-                        onClick = {
-                            skipPress = System.currentTimeMillis()
-                            onPreviousClick()
-                        },
-                        modifier = Modifier.size(48.dp).scale(skipScale)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipPrevious,
-                            contentDescription = "Previous",
-                            modifier = Modifier.size(32.dp),
-                            tint = onSurfaceColor
-                        )
+                    IconButton(onClick = { skipPress = System.currentTimeMillis(); onPreviousClick() }, modifier = Modifier.size(48.dp).scale(skipScale)) {
+                        Icon(Icons.Default.SkipPrevious, "Previous", modifier = Modifier.size(32.dp), tint = onSurfaceColor)
                     }
-                    val (playIcon, playDesc) = if (isPlaying) {
-                        Icons.Default.Pause to "Pause"
-                    } else {
-                        Icons.Default.PlayArrow to "Play"
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(if (isPlaying) 64.dp else 72.dp)
-                            .scale(playButtonScale)
-                            .clip(CircleShape)
-                            .background(
-                                brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                    colors = listOf(primaryColor, primaryColor.copy(alpha = 0.8f)),
-                                    radius = 48.dp.value
-                                )
-                            ),
+                    val (playIcon, playDesc) = if (isPlaying) Icons.Default.Pause to "Pause" else Icons.Default.PlayArrow to "Play"
+                    Box(modifier = Modifier.size(if (isPlaying) 64.dp else 72.dp).scale(playButtonScale).clip(CircleShape)
+                        .background(brush = Brush.radialGradient(colors = listOf(primaryColor, primaryColor.copy(alpha = 0.8f)), radius = 48.dp.value)),
                         contentAlignment = Alignment.Center
                     ) {
                         IconButton(onClick = onPlayPauseClick) {
-                            Icon(
-                                imageVector = playIcon,
-                                contentDescription = playDesc,
-                                modifier = Modifier.size(32.dp).rotate(playRotation),
-                                tint = onPrimaryColor
-                            )
+                            Icon(playIcon, playDesc, modifier = Modifier.size(32.dp).rotate(playRotation), tint = onPrimaryColor)
                         }
                     }
-                    IconButton(
-                        onClick = {
-                            skipPress = System.currentTimeMillis()
-                            onNextClick()
-                        },
-                        modifier = Modifier.size(48.dp).scale(skipScale)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipNext,
-                            contentDescription = "Next",
-                            modifier = Modifier.size(32.dp),
-                            tint = onSurfaceColor
-                        )
+                    IconButton(onClick = { skipPress = System.currentTimeMillis(); onNextClick() }, modifier = Modifier.size(48.dp).scale(skipScale)) {
+                        Icon(Icons.Default.SkipNext, "Next", modifier = Modifier.size(32.dp), tint = onSurfaceColor)
                     }
                     IconButton(onClick = { onPlaySimilarClick?.invoke() }) {
-                        Icon(
-                            imageVector = Icons.Default.Explore,
-                            contentDescription = "Play Similar",
-                            tint = onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Icon(Icons.Default.Explore, "Play Similar", tint = onSurfaceVariant, modifier = Modifier.size(24.dp))
                     }
                     IconButton(onClick = onRepeatClick) {
-                        Icon(
-                            imageVector = when (repeatMode) {
-                                RepeatMode.ONE -> Icons.Default.RepeatOne
-                                else -> Icons.Default.Repeat
-                            },
-                            contentDescription = "Repeat",
-                            tint = if (repeatMode != RepeatMode.OFF) primaryColor else onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Icon(if (repeatMode == RepeatMode.ONE) Icons.Default.RepeatOne else Icons.Default.Repeat, "Repeat",
+                            tint = if (repeatMode != RepeatMode.OFF) primaryColor else onSurfaceVariant, modifier = Modifier.size(24.dp))
                     }
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(32.dp))
+        if (isLandscape) {
+            Row(modifier = baseModifier, verticalAlignment = Alignment.CenterVertically) {
+                AlbumArtSection(modifier = Modifier.weight(0.4f).fillMaxHeight())
+                ControlsSection(
+                    modifier = Modifier.weight(0.6f).fillMaxHeight().padding(start = 16.dp),
+                    verticalArrangement = Arrangement.Center
+                )
+            }
+        } else {
+            Column(modifier = baseModifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
+                Spacer(Modifier.height(16.dp))
+                AlbumArtSection()
+                ControlsSection()
+                Spacer(Modifier.height(32.dp))
+            }
         }
 
         if (showPlaylistSheet && track != null) {
@@ -573,7 +457,7 @@ fun NowPlayingScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.PlaylistAdd,
+                                    imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
                                     contentDescription = null,
                                     tint = primaryColor
                                 )

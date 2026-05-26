@@ -45,7 +45,7 @@ class LocalTrackScanner @Inject constructor(
                 ?: 0L
 
             val trackEntity = TrackEntity(
-                id = System.currentTimeMillis(),
+                id = -(System.currentTimeMillis() and 0x7FFFFFFFFFFFFFFF),
                 title = title,
                 artist = artist,
                 album = album,
