@@ -1,65 +1,91 @@
-# FLUX MUSIC PLAYER — ВОЗМОЖНОСТИ ПРИЛОЖЕНИЯ
+# ============================================================
+# FLUX MUSIC PLAYER — ПРОМТ ДЛЯ РАЗРАБОТКИ v2.0.0
+# ============================================================
+# Версия: 2.0.0 (текущая, после отката)
+# Все фичи из v2.0.1–v2.0.3 сохранены ниже как REFERENCE
+# для будущей разработки, код откачен до v2.0.0
+# ============================================================
+#
+# КАК ИСПОЛЬЗОВАТЬ ЭТОТ ФАЙЛ:
+# 1. Открой в первой сессии и прочитай всё
+# 2. Вноси изменения в код, следуя задачам ниже
+# 3. После завершения задач: обнови проэкт.txt и промт.txt
+#    собери APK, запусти тесты, создай GitHub Release (см. ниже)
+#
+# ВАЖНО: Все пути и команды — для системы /var/home/link.
+# Java: /home/link/.sdkman/candidates/java/17.0.17-tem
+# SDK: /home/link/android-sdk
+# Проект: /var/home/link/Flux
+#
+# Сборка: export JAVA_HOME=/home/link/.sdkman/candidates/java/17.0.17-tem && cd /var/home/link/Flux && ./gradlew assembleDebug
+# Тесты: export JAVA_HOME=/home/link/.sdkman/candidates/java/17.0.17-tem && cd /var/home/link/Flux && ./gradlew test
+# Github Release: GITHUB_TOKEN=<token> gh release create v<version> --title "v<version>" --notes "..." app/build/outputs/apk/debug/app-debug.apk
+#
+# ПОСЛЕ ВЫПОЛНЕНИЯ ЛЮБОГО ДЕЙСТВИЯ: export JAVA_HOME=/home/link/.sdkman/candidates/java/17.0.17-tem && cd /var/home/link/Flux && ./gradlew assembleDebug 2>&1 | tail -5
+# ЗАПРЕЩЕНО: оставлять ошибки сборки. Если сборка падает — исправь и пересобери.
+# ============================================================
 
-## Базовые функции
-- Сканирование локальной медиатеки (аудиофайлы)
-- Воспроизведение: играть/пауза, следующий/предыдущий трек
-- Shuffle, Repeat (Off/All/One)
-- Перемотка по прогресс-бару
-- Мини-плеер внизу экрана с прогрессом
+## ✅ REFERENCE: Фичи из v2.0.1–v2.0.3 (отложены, код откачен к v2.0.0)
 
-## Уведомление
-- Кастомное уведомление с 6 кнопками:
-  Previous, Play/Pause, Next, -10s, +10s, Like (звёздочка)
-- Обложка альбома в уведомлении
-- 3 кнопки в компактном режиме
-- Лайк трека прямо из уведомления
+### SkySound Download Manager
+- [x] SkySoundDownloadManager: Semaphore(3), Flow<Map<String, DownloadProgress>>, cancel/pause/resume
+- [x] Deadlock fix: убран withContext(Dispatchers.IO), added ensureActive()
+- [x] DownloadProgress: percent, speedBytesPerSec, estimatedTimeRemaining, DownloadState
+- [x] DownloadProgressIndicator: Material3 прогресс бар + скорость + ETA + Cancel
 
-## Экраны
-- **Медиатека**: альбомы, исполнители, треки
-- **Сейчас играет**: полноэкранный плеер
-  - Адаптация под ориентацию:
-    портрет — колонка (обложка сверху, управление снизу)
-    ландшафт — строка (обложка слева 40%, управление справа 60%)
-  - Волновая анимация на обложке (4 типа: Bars, Sine, Circular, Gradient)
-  - AmbientWaveBackground
-  - Пульсация обложки в такт
-  - ProgressBar с перемоткой
-- **Плейлисты**: создание, просмотр, добавление треков, удаление
-- **Поиск**: по названию и исполнителю
-- **Настройки**: звук, волна, тема, обновления
+### Предзагрузка
+- [x] PrefetchWorker: 5 треков, 7дн очистка, EntryPoint pattern
+- [x] PredictiveCacheWorker: 6ч, зарядка+WiFi, время суток, EntryPoint pattern
+- [x] CachedRecommendationEntity + CachedRecommendationDao + Room migration 7→8→9
+- [x] RecommendationCacheManager: мост Room ↔ DownloadManager ↔ PrefetchWorker
 
-## Эквалайзер
-- 10 пресетов: Normal, Classical, Dance, Flat, Folk, Heavy Metal, Hip Hop, Jazz, Pop, Rock
-- Bass Boost (0-100%)
-- Ручная настройка частотных полос (вертикальные слайдеры)
-- Вкл/выкл
+### Персонализация
+- [x] PersonalizedRecommender: имплиситный фидбек с весами и декаем
+- [x] TrackAffinity.lastEventTimeMs + decay factor 0.5x (>7 дней)
+- [x] Time-of-day weight: вечером +1.5 для джаза/лоуфая/чилла
+- [x] MusicService интеграция: onTrackStarted/Completed/Skipped/Liked
+- [x] Гибридная волна: офлайн-запасной + онлайн рекомендации
+- [x] Acoustic WaveVisualizer: BPM/energy/valence → цвет/скорость/амплитуда
 
-## Тема
-- Material You Dynamic Colors (Android 12+)
-- Кастомная тёмная/светлая палитра
-- Режим темы: System, Light, Dark
-- Dynamic Colors: вкл/выкл
+### Сеть
+- [x] SkySoundApi.batchSearch: parallel async + retryWithBackoff(3) + LRUCache
+- [x] SkySoundApi.selectFastestCdn: пинг EU/US/Asia
+- [x] SkySoundApi.getDownloadUrlForTrack: парсинг downloadPage
 
-## Волновая визуализация
-- 4 типа: Bars, Sine, Circular, Gradient Bars
-- Vsync-синхронизированная анимация (сглажено, без джиттера)
-- Настраиваемая скорость и количество полос
-- Анимация в TrackItem (иконка 56dp)
-- Пульсация от BeatDetector
+### UI/UX
+- [x] SettingsScreen: Equalizer + Wave + Theme + Last.fm + Downloads + Updates
+- [x] Исправлены контролы: убран дубль hiltViewModel, debounce DataStore
+- [x] LibraryScreen: Offline banner + DownloadProgressIndicator
+- [x] WaveLoadingShimmer: "Подбираем волну..." + 5 shimmer items
+- [x] SleepTimer UI: BottomSheet 15/30/45/60 мин + End of Track
+- [x] Coil preloading: album art для 3 следующих треков
 
-## Остальное
-- Sleep Timer
-- «Play Similar» — автоматическая очередь похожих треков
-- «My Wave» — AI-рекомендации
-- Coil с дисковым кэшированием обложек
-- Локализация: русский, английский
-- Проверка обновлений с GitHub
-- Многократное дексшифрование (multiDex)
+### Инфраструктура
+- [x] EntryPoint pattern (не @HiltWorker) — обход KSP NonExistentClass
+- [x] CI/CD: GitHub Actions (lint → test → build)
+- [x] CHANGELOG.md
+- [x] ProGuard: Compose + Room + Coroutines + Media3 + Hilt + Gson + Worker
 
-## Технические детали
-- Clean Architecture + MVVM
-- Dagger Hilt DI
-- Media3 (ExoPlayer + MediaSessionService)
-- Room + DataStore
-- Jetpack Compose + Material 3
-- Минимальный API: 26, Target: 34
+### Исправления
+- [x] Room migration crash: indices в CachedRecommendationEntity, MIGRATION_8_9
+- [x] Settings controls: debounce DataStore write, onValueChangeFinished
+- [x] ProGuard keep rules for Compose (release)
+
+### Тесты (93, 0 падений)
+- [x] DownloadProgressTest (9), SkySoundDownloadManagerTest (4)
+- [x] PersonalizedRecommenderTest (8), RecommendationCacheManagerTest (5)
+- [x] BeatStateTest (7), LastFmScrobblerTest (10), SkySoundApiTest (4)
+- [x] PredictiveCacheWorkerTest (4), SelectFastestCdnTest (3)
+- [x] QueueManagerTest (25), TrackMapperTest (8), FormatDurationTest (6)
+
+## ПРАВИЛА РАЗРАБОТКИ
+1. **Удалять старые варианты** — никогда не оставляй закомментированный код
+2. **Не добавлять комментарии** в код (только если спрашивает пользователь)
+3. **Проверять существующие зависимости** перед добавлением новых
+4. **Следовать архитектуре**: Clean Architecture + MVVM + Hilt DI
+5. **Каждый новый файл → unit-тест**
+6. **После любого изменения → сборка → тесты**
+7. **Если сборка падает → исправить → пересобрать** (не оставлять ошибки)
+8. **Максимум 4 строки текста** в ответе пользователю (без кода)
+9. **Git push только по явной просьбе**
+10. **Всегда использовать Java 17** для сборки
